@@ -9,13 +9,8 @@ metadata:
 spec:
   replicas: 1
   revisionHistoryLimit: 1
-<<<<<<< HEAD
-#  strategy:
-#    type: Recreate
-=======
   updateStrategy:
     type: RollingUpdate
->>>>>>> e3f9461d000e467c2579bd6adab6e4e7ed5c31bb
   serviceName: mongodb-headless
   selector:
     matchLabels:
