@@ -15,5 +15,12 @@ build/
 coverage/
 split-output/
 
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+*.pem
+
 .DS_Store
 Thumbs.db

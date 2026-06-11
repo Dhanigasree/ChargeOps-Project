@@ -1,0 +1,7 @@
+key_name        = "chargeops-key"
+app_repo_url    = "https://github.com/Dhanigasree/ChargeOps.git"
+app_repo_branch = "main"
+
+# Optional:
+# allowed_origins    = "*"
+# stripe_secret_key  = ""
