@@ -28,6 +28,7 @@ services:
       PAYMENT_SERVICE_URL: http://payment-service:8005
       REVIEW_SERVICE_URL: http://review-service:8006
       ADMIN_SERVICE_URL: http://admin-service:8007
+      AI_SERVICE_URL: http://ai-service:8008
     depends_on:
       - auth-service
       - user-service
@@ -36,6 +37,7 @@ services:
       - payment-service
       - review-service
       - admin-service
+      - ai-service
     restart: unless-stopped
 
   auth-service:
@@ -163,6 +165,38 @@ services:
       - station-service
       - booking-service
       - payment-service
+    restart: unless-stopped
+
+  ai-service:
+    build:
+      context: ./services/ai-service
+    ports:
+      - "8008:8008"
+    environment:
+      PORT: 8008
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongo:27017/ev-ai-service
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-anthropic.claude-3-5-sonnet-20240620-v1:0}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
+      STATION_SERVICE_URL: http://station-service:8003
+      BOOKING_SERVICE_URL: http://booking-service:8004
+      PAYMENT_SERVICE_URL: http://payment-service:8005
+      REVIEW_SERVICE_URL: http://review-service:8006
+      ADMIN_SERVICE_URL: http://admin-service:8007
+    depends_on:
+      mongo:
+        condition: service_healthy
+      station-service:
+        condition: service_started
+      booking-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      review-service:
+        condition: service_started
+      admin-service:
+        condition: service_started
     restart: unless-stopped
 
   mongo:

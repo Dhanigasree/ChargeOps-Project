@@ -83,6 +83,8 @@ cat >"$APP_DIR/ev-backend/docker-compose.aws.yml" <<COMPOSE
 services:
   api-gateway:
     depends_on: []
+    environment:
+      AI_SERVICE_URL: http://ai-service:8008
   auth-service:
     depends_on: []
     environment:
@@ -116,11 +118,25 @@ services:
       - payment-service
     environment:
       MONGODB_URI: mongodb://${mongodb_root_username}:${mongodb_root_password}@${mongodb_private_ip}:27017/ev-admin-service?authSource=admin
+  ai-service:
+    depends_on:
+      - station-service
+      - booking-service
+      - payment-service
+      - review-service
+      - admin-service
+    environment:
+      MONGODB_URI: mongodb://${mongodb_root_username}:${mongodb_root_password}@${mongodb_private_ip}:27017/ev-ai-service?authSource=admin
+      STATION_SERVICE_URL: http://station-service:8003
+      BOOKING_SERVICE_URL: http://booking-service:8004
+      PAYMENT_SERVICE_URL: http://payment-service:8005
+      REVIEW_SERVICE_URL: http://review-service:8006
+      ADMIN_SERVICE_URL: http://admin-service:8007
 COMPOSE
 
 cd "$APP_DIR/ev-backend"
 COMPOSE_FILES="-f docker-compose.yml -f docker-compose.aws.yml"
-SERVICES="auth-service api-gateway user-service station-service booking-service payment-service review-service admin-service"
+SERVICES="auth-service user-service station-service booking-service payment-service review-service admin-service ai-service api-gateway"
 
 for service in $SERVICES; do
   echo "Starting $service"

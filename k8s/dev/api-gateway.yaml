@@ -57,6 +57,8 @@ spec:
               value: http://review-service:8006
             - name: ADMIN_SERVICE_URL
               value: http://admin-service:8007
+            - name: AI_SERVICE_URL
+              value: http://ai-service.chargeops.svc.cluster.local:8008
           livenessProbe:
             httpGet:
               path: /health

@@ -21,6 +21,7 @@ export const env = {
     booking: process.env.BOOKING_SERVICE_URL || "http://localhost:8004",
     payment: process.env.PAYMENT_SERVICE_URL || "http://localhost:8005",
     review: process.env.REVIEW_SERVICE_URL || "http://localhost:8006",
-    admin: process.env.ADMIN_SERVICE_URL || "http://localhost:8007"
+    admin: process.env.ADMIN_SERVICE_URL || "http://localhost:8007",
+    ai: process.env.AI_SERVICE_URL || "http://localhost:8008"
   }
 };

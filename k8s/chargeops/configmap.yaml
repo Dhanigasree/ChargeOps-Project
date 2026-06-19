@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-service-config
+  namespace: chargeops
+data:
+  NODE_ENV: production
+  ALLOWED_ORIGINS: "*"
+  AWS_REGION: us-east-1
+  BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20240620-v1:0
+  BEDROCK_MAX_TOKENS: "1200"
+  BEDROCK_TEMPERATURE: "0.2"
+  CHAT_MEMORY_LIMIT: "8"
+  SERVICE_REQUEST_TIMEOUT_MS: "10000"
+  STATION_SERVICE_URL: http://station-service.prod.svc.cluster.local:8003
+  BOOKING_SERVICE_URL: http://booking-service.prod.svc.cluster.local:8004
+  PAYMENT_SERVICE_URL: http://payment-service.prod.svc.cluster.local:8005
+  REVIEW_SERVICE_URL: http://review-service.prod.svc.cluster.local:8006
+  ADMIN_SERVICE_URL: http://admin-service.prod.svc.cluster.local:8007

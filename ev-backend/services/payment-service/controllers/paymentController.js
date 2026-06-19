@@ -218,6 +218,15 @@ export const getPaymentById = async (req, res) => {
   });
 };
 
+export const getUserPayments = async (req, res) => {
+  const payments = await Payment.find({ userId: req.user.id }).sort({ createdAt: -1 });
+
+  return res.status(200).json({
+    success: true,
+    data: payments.map((payment) => payment.toSanitizedJSON())
+  });
+};
+
 export const getAllPayments = async (req, res) => {
   const payments = await Payment.find().sort({ createdAt: -1 });
 

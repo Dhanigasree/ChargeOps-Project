@@ -30,5 +30,6 @@ router.use("/api/bookings", createProxy(env.services.booking));
 router.use("/api/payments", createProxy(env.services.payment));
 router.use("/api/reviews", createProxy(env.services.review));
 router.use("/api/admin", createProxy(env.services.admin));
+router.use("/api/ai", createProxy(env.services.ai));
 
 export default router;

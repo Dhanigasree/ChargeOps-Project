@@ -12,8 +12,27 @@ This repository now includes a capstone-ready CI/CD setup for ChargeOps using Do
 - `k8s-manifests/base/` contains reusable Kubernetes deployments, services, MongoDB, probes, and network policies.
 - `k8s-manifests/overlays/dev/` contains the `dev` namespace, config, and persistent storage binding.
 - `k8s-manifests/overlays/prod/` contains the `prod` namespace, config, and persistent storage binding.
+- `k8s/chargeops/` contains the Agentic AI service manifests for the `chargeops` namespace, including Deployment, Service, ConfigMap, Secret, HPA, NetworkPolicy, and IRSA service account.
 - `.github/workflows/ci-cd.yml` contains the branch-based build, scan, push, and deploy workflow.
 - `.github/workflows/codeql.yml` contains SAST scanning with GitHub CodeQL.
+
+## Agentic AI service
+
+ChargeOps now includes `ev-backend/services/ai-service`, a Node.js/Express microservice that exposes `POST /api/ai/chat` through the API gateway at `/api/ai/*`. It uses Amazon Bedrock Converse tool calling, MongoDB conversation memory in `chat_history`, structured JSON logs, and modular tools for station search, booking creation, payment spending history, review lookup, and admin utilization analytics.
+
+Deploy it with:
+
+```bash
+kubectl apply -k k8s/chargeops
+kubectl apply -f argocd/chargeops-ai-service-app.yaml
+```
+
+Required AWS setup:
+
+- Create an ECR repository such as `chargeops/ai-service`.
+- Create an IRSA role for the `chargeops/ai-service` service account with `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream`, `secretsmanager:GetSecretValue`, and the required `kms:Decrypt` permission.
+- Store the MongoDB URI in AWS Secrets Manager under the secret ID configured by `k8s/chargeops/secret.yaml`.
+- Set GitHub secrets `AWS_ROLE_TO_ASSUME`, `ARGOCD_SERVER`, and `ARGOCD_AUTH_TOKEN`; optionally set repository variables `AWS_REGION` and `ECR_REPOSITORY`.
 
 ## Multi-Repo Export
 

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
+import Assistant from "./pages/Assistant.jsx";
 import Bookings from "./pages/Bookings.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Login from "./pages/Login.jsx";
@@ -59,6 +60,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <Bookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/assistant"
+            element={
+              <ProtectedRoute>
+                <Assistant />
               </ProtectedRoute>
             }
           />

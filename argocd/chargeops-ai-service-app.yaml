@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chargeops-ai-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Dhanigasree/ChargeOps.git
+    targetRevision: main
+    path: k8s/chargeops
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: chargeops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

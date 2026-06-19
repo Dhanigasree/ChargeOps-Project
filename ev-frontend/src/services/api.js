@@ -65,4 +65,8 @@ export const adminApi = {
   approveStation: (stationId, isApproved = true) => api.put(`/admin/stations/${stationId}/approve`, { isApproved })
 };
 
+export const aiApi = {
+  chat: (payload) => api.post("/ai/chat", payload)
+};
+
 export default api;
