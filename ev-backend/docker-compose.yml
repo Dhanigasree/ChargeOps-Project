@@ -52,7 +52,8 @@ services:
       ALLOW_ADMIN_REGISTRATION: ${ALLOW_ADMIN_REGISTRATION:-false}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     restart: unless-stopped
 
   user-service:
@@ -68,7 +69,8 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     restart: unless-stopped
 
   station-service:
@@ -169,6 +171,12 @@ services:
       - "27018:27017"
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     restart: unless-stopped
 
 volumes:

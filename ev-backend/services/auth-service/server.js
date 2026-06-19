@@ -3,7 +3,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
-import { connectDatabase } from "./config/database.js";
+import { connectDatabase, getDatabaseHealth } from "./config/database.js";
 import { env } from "./config/env.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -40,9 +40,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
 
 app.get("/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Auth service is healthy"
+  const database = getDatabaseHealth();
+
+  res.status(database.readyState === 1 ? 200 : 503).json({
+    success: database.readyState === 1,
+    message: database.readyState === 1 ? "Auth service is healthy" : "Auth service database is unavailable",
+    database
   });
 });
 
@@ -52,9 +55,7 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 const startServer = async () => {
-  connectDatabase().catch((error) => {
-    console.error("Auth service MongoDB connection error", error);
-  });
+  await connectDatabase();
 
   app.listen(env.port, "0.0.0.0", () => {
     console.log(`Auth service listening on port ${env.port}`);
@@ -63,4 +64,5 @@ const startServer = async () => {
 
 startServer().catch((error) => {
   console.error("Failed to start auth service", error);
+  process.exit(1);
 });
