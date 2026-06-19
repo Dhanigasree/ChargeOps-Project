@@ -101,6 +101,12 @@ variable "domain_name" {
   default     = "chargeops.site"
 }
 
+variable "enable_custom_domain" {
+  description = "Create Route53 records and an ACM certificate for the custom CloudFront domain."
+  type        = bool
+  default     = false
+}
+
 variable "www_domain_name" {
   description = "WWW public domain name for ChargeOps."
   type        = string

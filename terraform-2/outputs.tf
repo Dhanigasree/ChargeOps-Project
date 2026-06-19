@@ -35,22 +35,22 @@ output "cloudfront_domain_name" {
 
 output "route53_zone_id" {
   description = "Route53 hosted zone ID used for ChargeOps."
-  value       = aws_route53_zone.primary.zone_id
+  value       = var.enable_custom_domain ? aws_route53_zone.primary[0].zone_id : null
 }
 
 output "route53_name_servers" {
   description = "Route53 hosted zone name servers to configure at your domain registrar."
-  value       = aws_route53_zone.primary.name_servers
+  value       = var.enable_custom_domain ? aws_route53_zone.primary[0].name_servers : []
 }
 
 output "route53_root_record" {
   description = "Root domain Route53 alias record."
-  value       = aws_route53_record.root.fqdn
+  value       = var.enable_custom_domain ? aws_route53_record.root[0].fqdn : null
 }
 
 output "route53_www_record" {
   description = "WWW Route53 alias record."
-  value       = aws_route53_record.www.fqdn
+  value       = var.enable_custom_domain ? aws_route53_record.www[0].fqdn : null
 }
 
 output "waf_arn" {
@@ -60,13 +60,13 @@ output "waf_arn" {
 
 output "acm_dns_validation_records" {
   description = "DNS records needed to validate the ACM certificate if you later point chargeops.site to CloudFront."
-  value = [
-    for option in aws_acm_certificate.cloudfront.domain_validation_options : {
+  value = var.enable_custom_domain ? [
+    for option in aws_acm_certificate.cloudfront[0].domain_validation_options : {
       name  = option.resource_record_name
       type  = option.resource_record_type
       value = option.resource_record_value
     }
-  ]
+  ] : []
 }
 
 output "cloudwatch_dashboard_name" {

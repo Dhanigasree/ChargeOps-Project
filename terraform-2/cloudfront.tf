@@ -111,7 +111,7 @@ resource "aws_cloudfront_origin_request_policy" "api" {
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   comment             = "ChargeOps frontend distribution"
-  aliases             = [var.domain_name, var.www_domain_name]
+  aliases             = var.enable_custom_domain ? [var.domain_name, var.www_domain_name] : []
   default_root_object = "index.html"
   price_class         = var.cloudfront_price_class
   web_acl_id          = aws_wafv2_web_acl.cloudfront.arn
@@ -177,10 +177,22 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  viewer_certificate {
-    acm_certificate_arn      = aws_acm_certificate_validation.cloudfront.certificate_arn
-    minimum_protocol_version = "TLSv1.2_2021"
-    ssl_support_method       = "sni-only"
+  dynamic "viewer_certificate" {
+    for_each = var.enable_custom_domain ? [1] : []
+
+    content {
+      acm_certificate_arn      = aws_acm_certificate_validation.cloudfront[0].certificate_arn
+      minimum_protocol_version = "TLSv1.2_2021"
+      ssl_support_method       = "sni-only"
+    }
+  }
+
+  dynamic "viewer_certificate" {
+    for_each = var.enable_custom_domain ? [] : [1]
+
+    content {
+      cloudfront_default_certificate = true
+    }
   }
 
   tags = merge(var.tags, {

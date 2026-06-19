@@ -32,6 +32,22 @@ else
 fi
 systemctl enable --now docker
 
+echo "Waiting for MongoDB at ${mongodb_private_ip}:27017 with configured credentials"
+for attempt in $(seq 1 60); do
+  if docker run --rm mongo:7 mongosh "mongodb://${mongodb_root_username}:${mongodb_root_password}@${mongodb_private_ip}:27017/admin?authSource=admin" --quiet --eval "db.adminCommand('ping').ok" | grep -q "1"; then
+    echo "MongoDB is reachable and authentication succeeded"
+    break
+  fi
+
+  if [ "$attempt" -eq 60 ]; then
+    echo "MongoDB did not become reachable after 60 attempts; refusing to start backend services"
+    exit 1
+  fi
+
+  echo "MongoDB is not ready yet; retrying in 5 seconds ($attempt/60)"
+  sleep 5
+done
+
 if [ ! -f /swapfile ]; then
   fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
   chmod 600 /swapfile
