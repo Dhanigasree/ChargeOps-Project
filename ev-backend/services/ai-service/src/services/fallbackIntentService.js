@@ -47,7 +47,13 @@ export const answerWithFallbackIntent = async ({ message, context }) => {
   }
 
   if (/(spend|spent|payment|revenue|cost)/.test(lower)) {
-    const result = await runTool("get_spending_history", { period: lower.includes("last month") ? "last_month" : "this_month" }, context);
+    let result;
+    try {
+      result = await runTool("get_spending_history", { period: lower.includes("last month") ? "last_month" : "this_month" }, context);
+    } catch (error) {
+      return "I can reach the AI service, but I could not retrieve payment history from the payment service right now. Please check your payments page or try again later.";
+    }
+
     if (result.needsAuthentication) {
       return "Please sign in so I can retrieve your payment history.";
     }
@@ -55,7 +61,13 @@ export const answerWithFallbackIntent = async ({ message, context }) => {
   }
 
   if (/(utilization|analytics|highest|admin|metric)/.test(lower)) {
-    const result = await runTool("get_utilization_metrics", { metric: "highest_utilization" }, context);
+    let result;
+    try {
+      result = await runTool("get_utilization_metrics", { metric: "highest_utilization" }, context);
+    } catch (error) {
+      return "I can reach the AI service, but I could not retrieve admin utilization metrics right now.";
+    }
+
     if (result.needsAuthentication) {
       return "Please sign in with an admin account so I can retrieve utilization analytics.";
     }
