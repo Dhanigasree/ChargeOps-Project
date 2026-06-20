@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api-gateway
-          image: dhaniga/chargeops-api-gateway:v1
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/api-gateway:latest
           imagePullPolicy: Always
           ports:
             - name: http
