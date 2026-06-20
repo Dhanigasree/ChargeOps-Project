@@ -87,6 +87,27 @@ data "aws_iam_policy_document" "ai_service" {
       "arn:${data.aws_partition.current.partition}:s3:::${var.reports_bucket_name}/ai-reports/*"
     ]
   }
+
+  statement {
+    sid    = "AllowMonthlyReportKms"
+    effect = "Allow"
+
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:GenerateDataKey"
+    ]
+
+    resources = [
+      aws_kms_key.s3.arn
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["s3.${var.aws_region}.amazonaws.com"]
+    }
+  }
 }
 
 resource "aws_iam_policy" "ai_service" {

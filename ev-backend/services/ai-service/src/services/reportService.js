@@ -53,7 +53,6 @@ export const generateMonthlyReport = async ({ context }) => {
         Key: key,
         Body: report,
         ContentType: "text/markdown",
-        ServerSideEncryption: "AES256",
         Metadata: {
           userId: context.userId
         }
