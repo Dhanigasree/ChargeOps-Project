@@ -6,8 +6,43 @@ const router = express.Router();
 
 const createProxy = (target) =>
   proxy(target, {
+    timeout: 60000,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      console.info(
+        JSON.stringify({
+          event: "api_gateway_proxy_request",
+          method: srcReq.method,
+          path: srcReq.originalUrl,
+          target
+        })
+      );
+
+      return proxyReqOpts;
+    },
+    userResDecorator: (proxyRes, proxyResData, req) => {
+      console.info(
+        JSON.stringify({
+          event: "api_gateway_proxy_response",
+          method: req.method,
+          path: req.originalUrl,
+          target,
+          statusCode: proxyRes.statusCode
+        })
+      );
+
+      return proxyResData;
+    },
     proxyReqPathResolver: (req) => req.originalUrl,
     proxyErrorHandler: (error, res, next) => {
+      console.error(
+        JSON.stringify({
+          event: "api_gateway_proxy_error",
+          target,
+          message: error.message,
+          stack: error.stack
+        })
+      );
+
       res.status(502).json({
         success: false,
         message: "Upstream service unavailable",
