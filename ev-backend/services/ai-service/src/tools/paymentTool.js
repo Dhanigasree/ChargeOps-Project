@@ -28,7 +28,7 @@ const periodEnd = (period) => {
 };
 
 export const getSpendingHistory = async ({ period = "this_month" } = {}, context) => {
-  if (!context.authorization) {
+  if (!context.authorization && !context.userId) {
     return {
       needsAuthentication: true,
       message: "Spending history requires the user's Authorization header."
@@ -37,10 +37,14 @@ export const getSpendingHistory = async ({ period = "this_month" } = {}, context
 
   logger.info({ period, userId: context.userId }, "AI tool get_spending_history invoked");
 
-  let source = "payment-service";
+  let source = context.authorization ? "payment-service" : "payment-db-fallback";
   let rawPayments = [];
 
   try {
+    if (!context.authorization) {
+      throw new Error("Payment service requires authorization; using payment database fallback");
+    }
+
     const payload = await requestJson({
       baseUrl: env.paymentServiceUrl,
       path: "/api/payments/me",
