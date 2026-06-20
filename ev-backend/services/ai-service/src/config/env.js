@@ -25,6 +25,7 @@ export const env = {
   bedrockTemperature: parseNumber(process.env.BEDROCK_TEMPERATURE, 0.2),
   mongoUri: process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://127.0.0.1:27020/ev-ai-service",
   mongodbSecretId: process.env.MONGODB_SECRET_ID || "",
+  userServiceUrl: process.env.USER_SERVICE_URL || "http://localhost:8002",
   stationServiceUrl: process.env.STATION_SERVICE_URL || "http://localhost:8003",
   bookingServiceUrl: process.env.BOOKING_SERVICE_URL || "http://localhost:8004",
   paymentServiceUrl: process.env.PAYMENT_SERVICE_URL || "http://localhost:8005",

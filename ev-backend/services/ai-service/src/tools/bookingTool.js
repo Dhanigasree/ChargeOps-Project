@@ -1,5 +1,6 @@
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
+import { getCollection, userIdFromContext } from "../services/dataStore.js";
 import { requestJson } from "../services/httpClient.js";
 
 export const createBooking = async ({ stationId, slotTime, amount }, context) => {
@@ -40,13 +41,28 @@ export const analyzeBookings = async ({ stationId } = {}, context) => {
 
   logger.info({ stationId, userId: context.userId }, "AI tool analyze_bookings invoked");
 
-  const payload = await requestJson({
-    baseUrl: env.bookingServiceUrl,
-    path: "/api/bookings/me",
-    authorization: context.authorization
-  });
+  let source = "booking-service";
+  let bookings = [];
 
-  const bookings = payload.data || [];
+  try {
+    const payload = await requestJson({
+      baseUrl: env.bookingServiceUrl,
+      path: "/api/bookings/me",
+      authorization: context.authorization
+    });
+    bookings = payload.data || [];
+  } catch (error) {
+    source = "booking-db-fallback";
+    logger.warn({ err: error, userId: context.userId }, "Booking service lookup failed, using read-only booking database fallback");
+
+    const bookingCollection = await getCollection("ev-booking-service", "bookings");
+    bookings = await bookingCollection
+      .find({ userId: userIdFromContext(context) })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .toArray();
+  }
+
   const relevantBookings = stationId ? bookings.filter((booking) => booking.stationId === stationId) : bookings;
   const byHour = relevantBookings.reduce((acc, booking) => {
     const hour = hourOf(booking.slotTime);
@@ -66,6 +82,7 @@ export const analyzeBookings = async ({ stationId } = {}, context) => {
     relevantBookingCount: relevantBookings.length,
     recentBookings: bookings.slice(0, 5),
     recentStationIds,
-    peakHour: peakHour ? { hour: Number(peakHour[0]), bookings: peakHour[1] } : null
+    peakHour: peakHour ? { hour: Number(peakHour[0]), bookings: peakHour[1] } : null,
+    source
   };
 };

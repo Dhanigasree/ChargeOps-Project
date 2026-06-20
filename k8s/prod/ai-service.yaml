@@ -12,6 +12,7 @@ data:
   BEDROCK_TEMPERATURE: "0.2"
   CHAT_MEMORY_LIMIT: "8"
   SERVICE_REQUEST_TIMEOUT_MS: "10000"
+  USER_SERVICE_URL: http://user-service:8002
   STATION_SERVICE_URL: http://station-service:8003
   BOOKING_SERVICE_URL: http://booking-service:8004
   PAYMENT_SERVICE_URL: http://payment-service:8005
@@ -129,6 +130,11 @@ spec:
                 configMapKeyRef:
                   name: ai-service-config
                   key: SERVICE_REQUEST_TIMEOUT_MS
+            - name: USER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: USER_SERVICE_URL
             - name: STATION_SERVICE_URL
               valueFrom:
                 configMapKeyRef:

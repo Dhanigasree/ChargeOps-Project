@@ -1,4 +1,6 @@
 import { env } from "../config/env.js";
+import { logger } from "../config/logger.js";
+import { getCollection } from "../services/dataStore.js";
 import { requestJson } from "../services/httpClient.js";
 
 const summarizeUtilization = (bookings = []) => {
@@ -27,24 +29,53 @@ export const getUtilizationMetrics = async ({ metric = "platform_summary" } = {}
     };
   }
 
-  const [analyticsPayload, bookingsPayload] = await Promise.all([
-    requestJson({
-      baseUrl: env.adminServiceUrl,
-      path: "/api/admin/analytics",
-      authorization: context.authorization
-    }),
-    requestJson({
-      baseUrl: env.adminServiceUrl,
-      path: "/api/admin/bookings",
-      authorization: context.authorization
-    })
-  ]);
+  logger.info({ metric, userId: context.userId }, "AI tool get_utilization_metrics invoked");
 
-  const utilization = summarizeUtilization(bookingsPayload.data || []);
+  let source = "admin-service";
+  let analytics;
+  let bookings;
+
+  try {
+    const [analyticsPayload, bookingsPayload] = await Promise.all([
+      requestJson({
+        baseUrl: env.adminServiceUrl,
+        path: "/api/admin/analytics",
+        authorization: context.authorization
+      }),
+      requestJson({
+        baseUrl: env.adminServiceUrl,
+        path: "/api/admin/bookings",
+        authorization: context.authorization
+      })
+    ]);
+    analytics = analyticsPayload.data;
+    bookings = bookingsPayload.data || [];
+  } catch (error) {
+    source = "analytics-db-fallback";
+    logger.warn({ err: error, userId: context.userId }, "Admin service lookup failed, using read-only analytics database fallback");
+
+    const [bookingCollection, paymentCollection] = await Promise.all([
+      getCollection("ev-booking-service", "bookings"),
+      getCollection("ev-payment-service", "payments")
+    ]);
+    bookings = await bookingCollection.find({}).sort({ createdAt: -1 }).limit(500).toArray();
+    const payments = await paymentCollection.find({}).sort({ createdAt: -1 }).limit(500).toArray();
+    const successfulPayments = payments.filter((payment) => payment.status === "success");
+    analytics = {
+      totalBookings: bookings.length,
+      totalRevenue: successfulPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+      successfulPayments: successfulPayments.length
+    };
+  }
+
+  const utilization = summarizeUtilization(bookings || []);
+
+  logger.info({ metric, source, utilizationCount: utilization.length }, "AI tool get_utilization_metrics completed");
 
   return {
     metric,
-    analytics: analyticsPayload.data,
+    source,
+    analytics,
     utilization,
     highestUtilization: utilization[0] || null
   };

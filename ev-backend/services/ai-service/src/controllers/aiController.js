@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { logger } from "../config/logger.js";
 import { getRecentMemory, saveConversation } from "../services/memoryService.js";
+import { requestJson } from "../services/httpClient.js";
 import { runAgent } from "../services/bedrockAgentService.js";
 import { runTool } from "../tools/index.js";
+import { toolConfig } from "../tools/toolSchemas.js";
+import { env } from "../config/env.js";
 
 const chatSchema = z.object({
   userId: z.string().min(1),
@@ -64,6 +67,47 @@ export const aiHealth = async (req, res) =>
     success: true,
     message: "AI service API is healthy"
   });
+
+export const listTools = async (req, res) =>
+  res.status(200).json({
+    success: true,
+    tools: toolConfig.tools.map(({ toolSpec }) => ({
+      name: toolSpec.name,
+      description: toolSpec.description,
+      inputSchema: toolSpec.inputSchema
+    }))
+  });
+
+export const debug = async (req, res) => {
+  const services = [
+    ["station-service", env.stationServiceUrl],
+    ["booking-service", env.bookingServiceUrl],
+    ["payment-service", env.paymentServiceUrl],
+    ["review-service", env.reviewServiceUrl],
+    ["admin-service", env.adminServiceUrl],
+    ["user-service", env.userServiceUrl]
+  ];
+
+  const checks = await Promise.all(
+    services.map(async ([name, baseUrl]) => {
+      try {
+        const payload = await requestJson({ baseUrl, path: "/health" });
+        return { name, baseUrl, ok: true, payload };
+      } catch (error) {
+        return { name, baseUrl, ok: false, message: error.message, statusCode: error.statusCode || 500 };
+      }
+    })
+  );
+
+  return res.status(200).json({
+    success: true,
+    bedrock: {
+      region: env.awsRegion,
+      modelId: env.bedrockModelId
+    },
+    services: checks
+  });
+};
 
 export const recommendStation = async (req, res) => {
   const parsed = optionalUserRequestSchema.safeParse(req.body);

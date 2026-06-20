@@ -1,4 +1,6 @@
 import { env } from "../config/env.js";
+import { logger } from "../config/logger.js";
+import { getCollection, userIdFromContext } from "../services/dataStore.js";
 import { requestJson } from "../services/httpClient.js";
 
 const periodStart = (period) => {
@@ -33,23 +35,49 @@ export const getSpendingHistory = async ({ period = "this_month" } = {}, context
     };
   }
 
-  const payload = await requestJson({
-    baseUrl: env.paymentServiceUrl,
-    path: "/api/payments/me",
-    authorization: context.authorization
-  });
+  logger.info({ period, userId: context.userId }, "AI tool get_spending_history invoked");
+
+  let source = "payment-service";
+  let rawPayments = [];
+
+  try {
+    const payload = await requestJson({
+      baseUrl: env.paymentServiceUrl,
+      path: "/api/payments/me",
+      authorization: context.authorization
+    });
+    rawPayments = payload.data || [];
+  } catch (error) {
+    source = "payment-db-fallback";
+    logger.warn({ err: error, userId: context.userId }, "Payment service lookup failed, using read-only payment database fallback");
+
+    const payments = await getCollection("ev-payment-service", "payments");
+    rawPayments = await payments
+      .find({ userId: userIdFromContext(context) })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .toArray();
+  }
 
   const start = periodStart(period);
   const end = periodEnd(period);
-  const payments = (payload.data || []).filter((payment) => {
+  const payments = rawPayments.filter((payment) => {
     const paidAt = new Date(payment.createdAt || payment.updatedAt || 0);
     return payment.status === "success" && (!start || paidAt >= start) && (!end || paidAt < end);
   });
 
+  const allSuccessfulPayments = rawPayments.filter((payment) => payment.status === "success");
+  const totalAllTime = allSuccessfulPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const total = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+
+  logger.info({ period, userId: context.userId, source, paymentCount: payments.length, total }, "AI tool get_spending_history completed");
+
   return {
     period,
-    total: payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+    total,
+    totalAllTime,
     currency: payments[0]?.currency || "usd",
-    payments
+    payments,
+    source
   };
 };

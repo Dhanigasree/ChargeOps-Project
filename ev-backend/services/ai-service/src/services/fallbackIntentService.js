@@ -60,7 +60,7 @@ export const answerWithFallbackIntent = async ({ message, context }) => {
     if (result.needsAuthentication) {
       return "Please sign in so I can retrieve your payment history.";
     }
-    return `Your ${result.period.replace("_", " ")} spending is ${result.total.toFixed(2)} ${result.currency.toUpperCase()} across ${result.payments.length} successful payment${result.payments.length === 1 ? "" : "s"}.`;
+    return `Your ${result.period.replace("_", " ")} spending is ${result.total.toFixed(2)} ${result.currency.toUpperCase()} across ${result.payments.length} successful payment${result.payments.length === 1 ? "" : "s"}. All-time successful spending is ${result.totalAllTime.toFixed(2)} ${result.currency.toUpperCase()}.`;
   }
 
   if (/(utilization|analytics|highest|admin|metric)/.test(lower)) {
@@ -77,7 +77,7 @@ export const answerWithFallbackIntent = async ({ message, context }) => {
     if (!result.highestUtilization) {
       return "I could not find booking utilization data yet.";
     }
-    return `Station ${result.highestUtilization.stationId} has the highest utilization with ${result.highestUtilization.totalBookings} total booking${result.highestUtilization.totalBookings === 1 ? "" : "s"}. Platform totals: ${result.analytics.totalBookings} bookings and ${result.analytics.totalRevenue} revenue.`;
+    return `Station ${result.highestUtilization.stationId} has the highest utilization with ${result.highestUtilization.totalBookings} total booking${result.highestUtilization.totalBookings === 1 ? "" : "s"} and ${result.highestUtilization.activeBookings} active booking${result.highestUtilization.activeBookings === 1 ? "" : "s"}. Platform totals: ${result.analytics.totalBookings} bookings and ${result.analytics.totalRevenue} revenue.`;
   }
 
   if (/(book|reserve)/.test(lower)) {
