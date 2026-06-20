@@ -10,7 +10,7 @@ const Sidebar = () => {
     { label: "Home", to: "/dashboard", icon: LayoutDashboard },
     { label: "Stations", to: "/stations", icon: MapPinned },
     { label: "Bookings", to: "/bookings", icon: CalendarRange },
-    { label: "Assistant", to: "/assistant", icon: Bot },
+    { label: "AI Assistant", to: "/assistant", icon: Bot },
     { label: "Profile", to: "/profile", icon: UserRound }
   ];
 

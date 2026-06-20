@@ -7,8 +7,9 @@ import { aiApi } from "../services/api.js";
 
 const suggestedPrompts = [
   "Find charging stations near Velachery",
+  "Recommend the best charger near Anna Nagar",
   "How much did I spend this month?",
-  "Show reviews for a station",
+  "Predict the best booking option tomorrow at 10 AM",
   "Which station has highest utilization?"
 ];
 
@@ -80,9 +81,9 @@ const Assistant = () => {
           <div className="flex flex-col gap-5 border-b border-white/10 pb-6 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-amber-300/80">Agentic AI</p>
-              <h2 className="mt-3 text-3xl font-semibold text-white">ChargeOps Assistant</h2>
+              <h2 className="mt-3 text-3xl font-semibold text-white">AI Assistant Dashboard</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                Ask for station search, booking help, spending summaries, reviews, and operations analytics.
+                Ask the ChargeOps AI Assistant for nearby stations, charger recommendations, booking optimization, cost insights, and usage analytics.
               </p>
             </div>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-800 via-violet-700 to-amber-400 text-white shadow-lg shadow-violet-950/30">

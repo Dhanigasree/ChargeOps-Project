@@ -66,7 +66,11 @@ export const adminApi = {
 };
 
 export const aiApi = {
-  chat: (payload) => api.post("/ai/chat", payload)
+  health: () => api.get("/ai/health"),
+  chat: (payload) => api.post("/ai/chat", payload),
+  recommend: (payload) => api.post("/ai/recommend", payload),
+  stations: (payload) => api.post("/ai/stations", payload),
+  predict: (payload) => api.post("/ai/predict", payload)
 };
 
 export default api;
