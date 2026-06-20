@@ -7,10 +7,13 @@ metadata:
     app: api-gateway
     tier: backend
 spec:
-  replicas: 1
+  replicas: 2
   revisionHistoryLimit: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: api-gateway
@@ -58,7 +61,7 @@ spec:
             - name: ADMIN_SERVICE_URL
               value: http://admin-service:8007
             - name: AI_SERVICE_URL
-              value: http://ai-service.chargeops.svc.cluster.local:8008
+              value: http://ai-service:8008
           livenessProbe:
             httpGet:
               path: /health

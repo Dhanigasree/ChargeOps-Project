@@ -1,0 +1,242 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-service-config
+  namespace: prod
+data:
+  NODE_ENV: production
+  ALLOWED_ORIGINS: "*"
+  AWS_REGION: ap-south-1
+  BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20240620-v1:0
+  BEDROCK_MAX_TOKENS: "1200"
+  BEDROCK_TEMPERATURE: "0.2"
+  CHAT_MEMORY_LIMIT: "8"
+  SERVICE_REQUEST_TIMEOUT_MS: "10000"
+  STATION_SERVICE_URL: http://station-service:8003
+  BOOKING_SERVICE_URL: http://booking-service:8004
+  PAYMENT_SERVICE_URL: http://payment-service:8005
+  REVIEW_SERVICE_URL: http://review-service:8006
+  ADMIN_SERVICE_URL: http://admin-service:8007
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ai-service-secret
+  namespace: prod
+  annotations:
+    chargeops.io/source: aws-secrets-manager
+    chargeops.io/kms-encrypted: "true"
+type: Opaque
+stringData:
+  MONGODB_SECRET_ID: chargeops/prod/ai-service/mongodb
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-service
+  namespace: prod
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::497676936148:role/chargeops-eks-ai-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  namespace: prod
+  labels:
+    app: ai-service
+    tier: backend
+spec:
+  replicas: 2
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: ai-service
+  template:
+    metadata:
+      labels:
+        app: ai-service
+        tier: backend
+    spec:
+      serviceAccountName: ai-service
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ai-service
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/ai-service:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: NODE_ENV
+            - name: ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: ALLOWED_ORIGINS
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: AWS_REGION
+            - name: BEDROCK_MODEL_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: BEDROCK_MODEL_ID
+            - name: BEDROCK_MAX_TOKENS
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: BEDROCK_MAX_TOKENS
+            - name: BEDROCK_TEMPERATURE
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: BEDROCK_TEMPERATURE
+            - name: CHAT_MEMORY_LIMIT
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: CHAT_MEMORY_LIMIT
+            - name: SERVICE_REQUEST_TIMEOUT_MS
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: SERVICE_REQUEST_TIMEOUT_MS
+            - name: STATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: STATION_SERVICE_URL
+            - name: BOOKING_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: BOOKING_SERVICE_URL
+            - name: PAYMENT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: PAYMENT_SERVICE_URL
+            - name: REVIEW_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: REVIEW_SERVICE_URL
+            - name: ADMIN_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: ADMIN_SERVICE_URL
+            - name: MONGODB_SECRET_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ai-service-secret
+                  key: MONGODB_SECRET_ID
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 18
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  namespace: prod
+  labels:
+    app: ai-service
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-service
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+    - name: http-gateway
+      port: 8008
+      targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ai-service
+  namespace: prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-service
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ai-service-ingress
+  namespace: prod
+spec:
+  podSelector:
+    matchLabels:
+      app: ai-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+      ports:
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 8008
