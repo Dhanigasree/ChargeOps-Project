@@ -11,6 +11,7 @@ data:
   BEDROCK_MAX_TOKENS: "1200"
   BEDROCK_TEMPERATURE: "0.2"
   CHAT_MEMORY_LIMIT: "8"
+  REPORTS_BUCKET_NAME: chargeops-reports-497676936148-ap-south-1
   SERVICE_REQUEST_TIMEOUT_MS: "10000"
   USER_SERVICE_URL: http://user-service:8002
   STATION_SERVICE_URL: http://station-service:8003
@@ -130,6 +131,11 @@ spec:
                 configMapKeyRef:
                   name: ai-service-config
                   key: SERVICE_REQUEST_TIMEOUT_MS
+            - name: REPORTS_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: REPORTS_BUCKET_NAME
             - name: USER_SERVICE_URL
               valueFrom:
                 configMapKeyRef:

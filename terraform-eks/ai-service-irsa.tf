@@ -73,6 +73,20 @@ data "aws_iam_policy_document" "ai_service" {
       values   = ["secretsmanager.${var.aws_region}.amazonaws.com"]
     }
   }
+
+  statement {
+    sid    = "AllowMonthlyReportStorage"
+    effect = "Allow"
+
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject"
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:s3:::${var.reports_bucket_name}/ai-reports/*"
+    ]
+  }
 }
 
 resource "aws_iam_policy" "ai_service" {

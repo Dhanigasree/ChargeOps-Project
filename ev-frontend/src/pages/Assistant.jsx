@@ -1,5 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, Loader2, MessageSquarePlus, Send, Sparkles, Trash2, UserRound } from "lucide-react";
+import {
+  BarChart3,
+  Bot,
+  Download,
+  Leaf,
+  Loader2,
+  MapPinned,
+  MessageSquarePlus,
+  Send,
+  Sparkles,
+  Trash2,
+  UserRound,
+  Zap
+} from "lucide-react";
 import Card from "../components/Card.jsx";
 import Sidebar from "../components/Sidebar.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -28,6 +41,9 @@ const Assistant = () => {
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState("");
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
+  const [insights, setInsights] = useState(null);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const userId = useMemo(() => user?.id || user?._id || user?.email || "current-user", [user]);
 
@@ -60,8 +76,41 @@ const Assistant = () => {
 
   useEffect(() => {
     refreshHistory({ selectLatest: true });
+    loadInsights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  const loadInsights = async () => {
+    setIsLoadingInsights(true);
+    try {
+      const { data } = await aiApi.insights({ userId });
+      setInsights(data.insights || null);
+    } catch {
+      setInsights(null);
+    } finally {
+      setIsLoadingInsights(false);
+    }
+  };
+
+  const downloadMonthlyReport = async () => {
+    setIsGeneratingReport(true);
+    setError("");
+    try {
+      const { data } = await aiApi.monthlyReport({ userId });
+      const report = data.report?.report || "ChargeOps AI report is unavailable.";
+      const blob = new Blob([report], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "chargeops-ai-monthly-report.md";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Could not generate the AI monthly report.");
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   const openSession = async (sessionId) => {
     if (!sessionId || sessionId === activeSessionId) {
@@ -146,6 +195,7 @@ const Assistant = () => {
       } else {
         refreshHistory();
       }
+      loadInsights();
     } catch (requestError) {
       const details = requestError.response?.data?.message || "AI Assistant is not reachable yet. Check that ai-service is running.";
       setError(details);
@@ -196,6 +246,88 @@ const Assistant = () => {
                 {prompt}
               </button>
             ))}
+          </div>
+        </Card>
+
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {[
+            {
+              icon: MapPinned,
+              label: "Recommended Station",
+              value: insights?.recommendedStation?.name || (isLoadingInsights ? "Loading..." : "Learning"),
+              caption: insights?.explainability?.recommendedStation || "Ranked by availability, distance, speed, and price."
+            },
+            {
+              icon: BarChart3,
+              label: "Monthly Spend",
+              value: `${Number(insights?.monthlySpend || 0).toFixed(2)} ${String(insights?.currency || "usd").toUpperCase()}`,
+              caption: insights?.explainability?.payment || "Calculated from successful payment history."
+            },
+            {
+              icon: Leaf,
+              label: "CO2 Saved",
+              value: `${Number(insights?.co2SavedKg || 0).toFixed(2)} kg`,
+              caption: insights?.explainability?.sustainability || "Estimated environmental impact from EV charging."
+            },
+            {
+              icon: Zap,
+              label: "Peak Usage",
+              value: insights?.peakUsageTime || "Learning",
+              caption: insights?.explainability?.analytics || "Based on utilization and booking activity."
+            },
+            {
+              icon: Sparkles,
+              label: "Next Booking",
+              value: insights?.predictedNextBooking || "Learning",
+              caption: insights?.explainability?.booking || "Predicted from habits, station availability, and peak demand."
+            }
+          ].map(({ icon: Icon, label, value, caption }) => (
+            <Card key={label} className="min-h-44">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-amber-200">
+                <Icon size={18} />
+              </div>
+              <p className="mt-4 text-xs uppercase tracking-[0.22em] text-slate-500">{label}</p>
+              <p className="mt-2 text-lg font-semibold leading-snug text-white">{value}</p>
+              <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-400">{caption}</p>
+            </Card>
+          ))}
+        </section>
+
+        <Card>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-amber-300/80">AI Operations Platform</p>
+              <h3 className="mt-2 text-2xl font-semibold text-white">Multi-agent intelligence layer</h3>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                Master Agent routes requests to Station, Booking, Payment, Review, Analytics, and Sustainability agents. Each recommendation includes explainability and uses live ChargeOps data where available.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={downloadMonthlyReport}
+              disabled={isGeneratingReport}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isGeneratingReport ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />}
+              Monthly Report
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(insights?.utilizationHeatmap || []).slice(0, 6).map((item) => (
+              <div key={item.stationId} className="rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3">
+                <p className="truncate text-sm font-medium text-white">{item.stationId}</p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-gradient-to-r from-blue-700 via-emerald-400 to-amber-300" style={{ width: `${Math.min(100, Number(item.value || 0) * 10)}%` }} />
+                </div>
+                <p className="mt-2 text-xs text-slate-500">{item.value} booking signal</p>
+              </div>
+            ))}
+            {!(insights?.utilizationHeatmap || []).length && (
+              <p className="rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-4 text-sm text-slate-400">
+                Utilization heatmap will appear after booking activity is available.
+              </p>
+            )}
           </div>
         </Card>
 

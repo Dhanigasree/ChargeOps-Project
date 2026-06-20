@@ -23,6 +23,7 @@ export const env = {
   bedrockModelId: process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20240620-v1:0",
   bedrockMaxTokens: parseNumber(process.env.BEDROCK_MAX_TOKENS, 1200),
   bedrockTemperature: parseNumber(process.env.BEDROCK_TEMPERATURE, 0.2),
+  reportsBucketName: process.env.REPORTS_BUCKET_NAME || "",
   mongoUri: process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://127.0.0.1:27020/ev-ai-service",
   mongodbSecretId: process.env.MONGODB_SECRET_ID || "",
   userServiceUrl: process.env.USER_SERVICE_URL || "http://localhost:8002",
