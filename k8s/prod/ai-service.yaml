@@ -77,6 +77,23 @@ spec:
                 configMapKeyRef:
                   name: ai-service-config
                   key: NODE_ENV
+            - name: MONGO_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: chargeops-config
+                  key: MONGO_HOST
+            - name: MONGO_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: chargeops-secrets
+                  key: MONGO_ROOT_USERNAME
+            - name: MONGO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chargeops-secrets
+                  key: MONGO_ROOT_PASSWORD
+            - name: MONGO_URI
+              value: mongodb://$(MONGO_ROOT_USERNAME):$(MONGO_ROOT_PASSWORD)@$(MONGO_HOST):27017/ev-ai-service?authSource=admin
             - name: ALLOWED_ORIGINS
               valueFrom:
                 configMapKeyRef:
@@ -137,11 +154,6 @@ spec:
                 configMapKeyRef:
                   name: ai-service-config
                   key: ADMIN_SERVICE_URL
-            - name: MONGODB_SECRET_ID
-              valueFrom:
-                secretKeyRef:
-                  name: ai-service-secret
-                  key: MONGODB_SECRET_ID
           livenessProbe:
             httpGet:
               path: /health

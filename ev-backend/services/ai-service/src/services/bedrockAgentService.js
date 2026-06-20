@@ -43,6 +43,17 @@ export const runAgent = async ({ message, memory, context }) => {
 
   try {
     for (let step = 0; step < 4; step += 1) {
+      logger.info(
+        {
+          modelId: env.bedrockModelId,
+          region: env.awsRegion,
+          step,
+          userId: context.userId,
+          messageCount: messages.length
+        },
+        "Invoking Amazon Bedrock"
+      );
+
       const response = await bedrockClient.send(
         new ConverseCommand({
           modelId: env.bedrockModelId,
@@ -56,8 +67,20 @@ export const runAgent = async ({ message, memory, context }) => {
         })
       );
 
+      logger.info(
+        {
+          modelId: env.bedrockModelId,
+          step,
+          stopReason: response.stopReason,
+          usage: response.usage,
+          metrics: response.metrics
+        },
+        "Amazon Bedrock response received"
+      );
+
       const assistantMessage = response.output?.message;
       if (!assistantMessage) {
+        logger.warn({ modelId: env.bedrockModelId, step }, "Amazon Bedrock response did not include a message");
         break;
       }
 
@@ -75,7 +98,9 @@ export const runAgent = async ({ message, memory, context }) => {
       const toolResults = await Promise.all(
         toolUses.map(async (toolUse) => {
           try {
+            logger.info({ tool: toolUse.name, userId: context.userId }, "Running AI tool");
             const result = await runTool(toolUse.name, toolUse.input || {}, context);
+            logger.info({ tool: toolUse.name, userId: context.userId }, "AI tool completed");
             return {
               toolResult: {
                 toolUseId: toolUse.toolUseId,
@@ -101,7 +126,15 @@ export const runAgent = async ({ message, memory, context }) => {
       });
     }
   } catch (error) {
-    logger.warn({ err: error }, "Bedrock agent failed, using fallback intent service");
+    logger.warn(
+      {
+        err: error,
+        modelId: env.bedrockModelId,
+        region: env.awsRegion,
+        userId: context.userId
+      },
+      "Bedrock agent failed, using fallback intent service"
+    );
   }
 
   return answerWithFallbackIntent({ message, context });
