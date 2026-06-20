@@ -132,7 +132,7 @@ export const searchStations = async ({ query, chargerType, maxPrice, availableOn
   });
 
   const place = inferPlace(query);
-  const shouldBroaden = !directPayload.data?.length && (query || chargerType || maxPrice || availableOnly || fastOnly);
+  const shouldBroaden = Boolean(!directPayload.data?.length && (query || chargerType || maxPrice || availableOnly || fastOnly));
   const payload = shouldBroaden
     ? await requestJson({
         baseUrl: env.stationServiceUrl,
@@ -146,6 +146,7 @@ export const searchStations = async ({ query, chargerType, maxPrice, availableOn
   const rankedStations = (payload.data || [])
     .map((station) => scoreStation(station, { query, place, chargerType, maxPrice, availableOnly, fastOnly }))
     .filter((station) => station.matchScore > -50)
+    .filter((station) => !place || station.distanceKm === null || station.distanceKm <= 100 || normalize(station.location?.district) === normalize(place.district))
     .sort((a, b) => b.matchScore - a.matchScore || Number(b.availability?.slots || 0) - Number(a.availability?.slots || 0));
 
   logger.info({ query, resultCount: rankedStations.length, broadened: shouldBroaden }, "AI tool search_stations completed");
