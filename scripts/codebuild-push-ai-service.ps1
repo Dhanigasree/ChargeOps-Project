@@ -153,7 +153,13 @@ if ($ProjectExists -eq $ProjectName) {
     --region $Region | Out-Null
 }
 
-$BuildId = (aws codebuild start-build --project-name $ProjectName --region $Region --query "build.id" --output text).Trim()
+$BuildId = (aws codebuild start-build `
+  --project-name $ProjectName `
+  --source-type-override NO_SOURCE `
+  --buildspec-override $BuildSpec `
+  --region $Region `
+  --query "build.id" `
+  --output text).Trim()
 Write-Host "Started CodeBuild build: $BuildId"
 
 do {
