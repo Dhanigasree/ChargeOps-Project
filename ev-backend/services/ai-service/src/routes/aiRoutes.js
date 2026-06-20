@@ -3,10 +3,13 @@ import {
   aiHealth,
   chat,
   debug,
+  getHistorySession,
   listTools,
+  listHistory,
   optimizeBooking,
   optimizeChargingCost,
   recommendStation,
+  removeHistorySession,
   usageAnalytics
 } from "../controllers/aiController.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -16,6 +19,9 @@ const router = express.Router();
 router.get("/health", asyncHandler(aiHealth));
 router.get("/tools", asyncHandler(listTools));
 router.get("/debug", asyncHandler(debug));
+router.get("/history", asyncHandler(listHistory));
+router.get("/history/:sessionId", asyncHandler(getHistorySession));
+router.delete("/history/:sessionId", asyncHandler(removeHistorySession));
 router.post("/chat", asyncHandler(chat));
 router.post("/recommend", asyncHandler(recommendStation));
 router.post("/stations", asyncHandler(recommendStation));

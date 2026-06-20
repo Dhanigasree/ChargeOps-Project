@@ -14,7 +14,14 @@ Format answers naturally and concisely. Use recent conversation context only whe
 
 const buildMessages = ({ message, memory }) => {
   const memoryText = memory
-    .map((item) => `User: ${item.prompt}\nAssistant: ${item.response}`)
+    .map((item) => {
+      if (item.prompt || item.response) {
+        return `User: ${item.prompt || ""}\nAssistant: ${item.response || ""}`;
+      }
+
+      const label = item.role === "assistant" ? "Assistant" : "User";
+      return `${label}: ${item.content || ""}`;
+    })
     .join("\n\n");
 
   return [

@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { logger } from "../config/logger.js";
-import { getRecentMemory, saveConversation } from "../services/memoryService.js";
+import {
+  appendConversationTurn,
+  createSessionId,
+  deleteChatSession,
+  getChatSession,
+  getRecentMemory,
+  listChatSessions
+} from "../services/memoryService.js";
 import { requestJson } from "../services/httpClient.js";
 import { runAgent } from "../services/bedrockAgentService.js";
 import { runTool } from "../tools/index.js";
@@ -9,7 +16,18 @@ import { env } from "../config/env.js";
 
 const chatSchema = z.object({
   userId: z.string().min(1),
+  sessionId: z.string().min(1).optional(),
   message: z.string().min(1).max(4000)
+});
+
+const historyQuerySchema = z.object({
+  userId: z.string().min(1),
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(50).optional()
+});
+
+const historyParamsSchema = z.object({
+  sessionId: z.string().min(1)
 });
 
 export const chat = async (req, res) => {
@@ -24,24 +42,105 @@ export const chat = async (req, res) => {
   }
 
   const { userId, message } = parsed.data;
+  const sessionId = parsed.data.sessionId || createSessionId();
   const context = {
     userId,
     authorization: req.headers.authorization
   };
 
-  const memory = await getRecentMemory(userId);
+  const memory = await getRecentMemory({ userId, sessionId });
   const answer = await runAgent({ message, memory, context });
 
-  await saveConversation({
+  const session = await appendConversationTurn({
     userId,
+    sessionId,
     prompt: message,
     response: answer
   });
 
-  logger.info({ userId }, "AI chat completed");
+  logger.info({ userId, sessionId }, "AI chat completed");
 
   return res.status(200).json({
-    answer
+    answer,
+    sessionId,
+    session
+  });
+};
+
+export const listHistory = async (req, res) => {
+  const parsed = historyQuerySchema.safeParse(req.query);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid history request",
+      errors: parsed.error.flatten()
+    });
+  }
+
+  const result = await listChatSessions(parsed.data);
+  return res.status(200).json({
+    success: true,
+    ...result
+  });
+};
+
+export const getHistorySession = async (req, res) => {
+  const query = historyQuerySchema.pick({ userId: true }).safeParse(req.query);
+  const params = historyParamsSchema.safeParse(req.params);
+
+  if (!query.success || !params.success) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid chat session request",
+      errors: {
+        query: query.error?.flatten(),
+        params: params.error?.flatten()
+      }
+    });
+  }
+
+  const session = await getChatSession({
+    userId: query.data.userId,
+    sessionId: params.data.sessionId
+  });
+
+  if (!session) {
+    return res.status(404).json({
+      success: false,
+      message: "Chat session not found"
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    session
+  });
+};
+
+export const removeHistorySession = async (req, res) => {
+  const query = historyQuerySchema.pick({ userId: true }).safeParse(req.query);
+  const params = historyParamsSchema.safeParse(req.params);
+
+  if (!query.success || !params.success) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid delete chat session request",
+      errors: {
+        query: query.error?.flatten(),
+        params: params.error?.flatten()
+      }
+    });
+  }
+
+  const deleted = await deleteChatSession({
+    userId: query.data.userId,
+    sessionId: params.data.sessionId
+  });
+
+  return res.status(deleted ? 200 : 404).json({
+    success: deleted,
+    message: deleted ? "Chat session deleted" : "Chat session not found"
   });
 };
 
