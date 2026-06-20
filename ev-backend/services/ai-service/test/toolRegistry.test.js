@@ -4,9 +4,11 @@ import { runTool, tools } from "../src/tools/index.js";
 
 test("registers all ChargeOps agent tools", () => {
   assert.deepEqual(Object.keys(tools).sort(), [
+    "analyze_bookings",
     "create_booking",
     "get_spending_history",
     "get_station_reviews",
+    "get_user_profile",
     "get_utilization_metrics",
     "search_stations"
   ]);

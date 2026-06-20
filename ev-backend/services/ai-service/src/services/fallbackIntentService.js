@@ -17,10 +17,13 @@ const formatStationSearch = (result, query) => {
 
   const lines = result.stations.slice(0, 5).map((station, index) => {
     const location = [station.location?.locality, station.location?.district, station.location?.state].filter(Boolean).join(", ");
-    return `${index + 1}. ${station.name} (${location || station.location?.address || "location unavailable"}) - ${station.chargerType}, ${station.availability?.slots ?? 0} slots, ${station.pricePerUnit} per unit`;
+    const distance = station.distanceKm === null || station.distanceKm === undefined ? "" : `, about ${station.distanceKm} km from the requested area`;
+    return `${index + 1}. ${station.name} (${location || station.location?.address || "location unavailable"}) - ${station.chargerType}, ${station.availability?.slots ?? 0} slots, ${station.pricePerUnit} per unit${distance}`;
   });
 
-  return `I found ${result.count} approved charging station${result.count === 1 ? "" : "s"}${query ? ` near ${query}` : ""}:\n${lines.join("\n")}`;
+  const broadened = result.broadened ? " I did not find an exact locality match, so I ranked the closest relevant ChargeOps stations from live station data." : "";
+
+  return `I found ${result.count} approved charging station${result.count === 1 ? "" : "s"}${query ? ` near ${query}` : ""}.${broadened}\n${lines.join("\n")}`;
 };
 
 export const answerWithFallbackIntent = async ({ message, context }) => {
@@ -28,7 +31,7 @@ export const answerWithFallbackIntent = async ({ message, context }) => {
 
   if (/(find|search|near|station|charger|charging)/.test(lower) && !/(review|book|spend|utilization)/.test(lower)) {
     const query = placeAfterNear(message) || message.replace(/find|search|ev|charging|chargers?|stations?|near/gi, "").trim();
-    const result = await runTool("search_stations", { query }, context);
+    const result = await runTool("search_stations", { query, fastOnly: /fast|dc|quick/i.test(lower), availableOnly: true }, context);
     return formatStationSearch(result, query);
   }
 
@@ -78,7 +81,15 @@ export const answerWithFallbackIntent = async ({ message, context }) => {
   }
 
   if (/(book|reserve)/.test(lower)) {
-    return "I can create that booking once you provide the station ID, slot time, and expected amount.";
+    const query = placeAfterNear(message) || message.replace(/book|reserve|charger|charging|station|tomorrow|at|\d{1,2}\s*(am|pm)?/gi, "").trim();
+    const result = await runTool("search_stations", { query, availableOnly: true, fastOnly: /fast|dc/i.test(lower) }, context);
+    const bestStation = result.stations[0];
+
+    if (!bestStation) {
+      return "I can help with booking, but I could not find an available approved station from the live station data. Try a nearby city or locality.";
+    }
+
+    return `Based on live station data, I recommend ${bestStation.name} (${bestStation.location?.locality}, ${bestStation.location?.district}) for that booking. It has ${bestStation.availability?.slots ?? 0} available slot(s), charger type ${bestStation.chargerType}, and price ${bestStation.pricePerUnit} per unit. To create the booking, confirm this station ID: ${bestStation.id}, the exact slot time, and expected amount.`;
   }
 
   return "I can help find stations, create bookings, summarize spending, retrieve reviews, and analyze admin utilization. What would you like me to do?";

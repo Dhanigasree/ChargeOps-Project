@@ -78,10 +78,10 @@ export const recommendStation = async (req, res) => {
 
   const { userId = "anonymous", location, message, chargerType, maxPrice } = parsed.data;
   const query = location || message || "";
-  const result = await runTool("search_stations", { query, chargerType, maxPrice }, requestContext(req, userId));
+  const result = await runTool("search_stations", { query, chargerType, maxPrice, availableOnly: true }, requestContext(req, userId));
 
   const answer = result.count
-    ? `Recommended ${result.stations[0]?.name || "charging station"} based on availability, location, and price.`
+    ? `Recommended ${result.stations[0]?.name || "charging station"} based on live availability, location relevance, charger type, and price.`
     : "No matching charging stations were found for the requested location.";
 
   return res.status(200).json({
@@ -102,7 +102,7 @@ export const optimizeBooking = async (req, res) => {
   }
 
   const { userId = "anonymous", location, message, chargerType, maxPrice } = parsed.data;
-  const result = await runTool("search_stations", { query: location || message || "", chargerType, maxPrice }, requestContext(req, userId));
+  const result = await runTool("search_stations", { query: location || message || "", chargerType, maxPrice, availableOnly: true }, requestContext(req, userId));
   const bestStation = result.stations[0] || null;
 
   return res.status(200).json({

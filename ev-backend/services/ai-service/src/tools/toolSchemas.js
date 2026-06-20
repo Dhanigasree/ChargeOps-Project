@@ -3,14 +3,16 @@ export const toolConfig = {
     {
       toolSpec: {
         name: "search_stations",
-        description: "Search EV charging stations by locality, address, state, district, charger type, approval status, or price range.",
+        description: "Search and rank real ChargeOps EV charging stations by locality, nearby known area, availability, charger type, fast charging, or price.",
         inputSchema: {
           json: {
             type: "object",
             properties: {
               query: { type: "string", description: "Free-text place or station search query." },
               chargerType: { type: "string", description: "Optional charger type filter." },
-              maxPrice: { type: "number", description: "Optional maximum price per charging unit." }
+              maxPrice: { type: "number", description: "Optional maximum price per charging unit." },
+              availableOnly: { type: "boolean", description: "Whether to prefer stations with available slots." },
+              fastOnly: { type: "boolean", description: "Whether to prefer DC fast or CCS-style chargers." }
             }
           }
         }
@@ -28,6 +30,20 @@ export const toolConfig = {
               stationId: { type: "string" },
               slotTime: { type: "string", description: "ISO-8601 date-time for the booking slot." },
               amount: { type: "number" }
+            }
+          }
+        }
+      }
+    },
+    {
+      toolSpec: {
+        name: "analyze_bookings",
+        description: "Retrieve the signed-in user's real booking history and summarize booking patterns, recent stations, and peak hours.",
+        inputSchema: {
+          json: {
+            type: "object",
+            properties: {
+              stationId: { type: "string", description: "Optional station ID to focus the analysis." }
             }
           }
         }
@@ -58,6 +74,18 @@ export const toolConfig = {
             properties: {
               stationId: { type: "string" }
             }
+          }
+        }
+      }
+    },
+    {
+      toolSpec: {
+        name: "get_user_profile",
+        description: "Retrieve the signed-in user's ChargeOps profile and preferences from user-service.",
+        inputSchema: {
+          json: {
+            type: "object",
+            properties: {}
           }
         }
       }
