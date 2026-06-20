@@ -144,5 +144,5 @@ export const runAgent = async ({ message, memory, context }) => {
     );
   }
 
-  return answerWithFallbackIntent({ message, context });
+  return answerWithFallbackIntent({ message, memory, context });
 };

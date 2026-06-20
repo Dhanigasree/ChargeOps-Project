@@ -10,6 +10,20 @@ const stationIdFromMessage = (message) => {
   return match?.[1];
 };
 
+const lastStationQueryFromMemory = (memory = []) => {
+  const userMessages = memory.filter((item) => item.role === "user" || item.prompt).reverse();
+
+  for (const item of userMessages) {
+    const content = item.content || item.prompt || "";
+    const lower = content.toLowerCase();
+    if (/(find|search|near|station|charger|charging)/.test(lower) && !/(review|rating|feedback)/.test(lower)) {
+      return placeAfterNear(content) || content.replace(/find|search|ev|charging|chargers?|stations?|near/gi, "").trim();
+    }
+  }
+
+  return "";
+};
+
 const formatStationSearch = (result, query) => {
   if (!result.count) {
     return `I could not find approved charging stations${query ? ` near ${query}` : ""}. Try a nearby locality or a broader search.`;
@@ -26,7 +40,54 @@ const formatStationSearch = (result, query) => {
   return `I found ${result.count} approved charging station${result.count === 1 ? "" : "s"}${query ? ` near ${query}` : ""}.${broadened}\n${lines.join("\n")}`;
 };
 
-export const answerWithFallbackIntent = async ({ message, context }) => {
+const answerBestRatedFromMemory = async ({ memory, context }) => {
+  const query = lastStationQueryFromMemory(memory);
+  if (!query) {
+    return "Which station ID or area should I use to retrieve reviews?";
+  }
+
+  const stationResult = await runTool("search_stations", { query, availableOnly: true }, context);
+  const stations = stationResult.stations || [];
+
+  if (!stations.length) {
+    return `I could not find the earlier station list for ${query}. Please search stations again.`;
+  }
+
+  const ratedStations = await Promise.all(
+    stations.slice(0, 5).map(async (station) => {
+      try {
+        const reviewResult = await runTool("get_station_reviews", { stationId: station.id || station._id }, context);
+        return {
+          station,
+          reviewResult
+        };
+      } catch (error) {
+        return {
+          station,
+          reviewResult: { count: 0, averageRating: null, reviews: [] }
+        };
+      }
+    })
+  );
+
+  const withRatings = ratedStations.filter(({ reviewResult }) => reviewResult.averageRating !== null);
+
+  if (!withRatings.length) {
+    const names = stations
+      .slice(0, 5)
+      .map((station) => station.name)
+      .filter(Boolean)
+      .join(", ");
+    return `I found the earlier stations near ${query}, but I could not find review ratings for them yet. Stations checked: ${names}.`;
+  }
+
+  withRatings.sort((a, b) => b.reviewResult.averageRating - a.reviewResult.averageRating);
+  const best = withRatings[0];
+
+  return `${best.station.name} has the best rating from the stations near ${query}: ${best.reviewResult.averageRating}/5 based on ${best.reviewResult.count} review${best.reviewResult.count === 1 ? "" : "s"}.`;
+};
+
+export const answerWithFallbackIntent = async ({ message, memory = [], context }) => {
   const lower = message.toLowerCase();
 
   if (/(find|search|near|station|charger|charging)/.test(lower) && !/(review|book|spend|utilization)/.test(lower)) {
@@ -38,7 +99,7 @@ export const answerWithFallbackIntent = async ({ message, context }) => {
   if (/(review|rating|feedback)/.test(lower)) {
     const stationId = stationIdFromMessage(message);
     if (!stationId) {
-      return "Which station ID should I retrieve reviews for?";
+      return answerBestRatedFromMemory({ memory, context });
     }
     const result = await runTool("get_station_reviews", { stationId }, context);
     return `I found ${result.count} review${result.count === 1 ? "" : "s"} for station ${stationId}. ${
