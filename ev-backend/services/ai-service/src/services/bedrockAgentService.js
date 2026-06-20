@@ -45,7 +45,7 @@ const textFromMessage = (message) =>
 
 const toolUsesFromMessage = (message) => (message.content || []).filter((block) => block.toolUse).map((block) => block.toolUse);
 
-export const runAgent = async ({ message, memory, context }) => {
+export const runAgent = async ({ message, memory, context, fallbackOnError = true }) => {
   const messages = buildMessages({ message, memory });
 
   try {
@@ -142,6 +142,10 @@ export const runAgent = async ({ message, memory, context }) => {
       },
       "Bedrock agent failed, using fallback intent service"
     );
+  }
+
+  if (!fallbackOnError) {
+    return null;
   }
 
   return answerWithFallbackIntent({ message, memory, context });
