@@ -75,7 +75,7 @@ function Write-Utf8NoBom {
         "ecr:PutImage",
         "ecr:UploadLayerPart"
       )
-      Resource = "arn:aws:ecr:$Region`:$AccountId`:repository/$Repository"
+      Resource = "arn:aws:ecr:$Region`:$AccountId`:repository/chargeops/*"
     }
   )
 } | ConvertTo-Json -Depth 10 | ForEach-Object { Write-Utf8NoBom -Path $PermissionPolicyPath -Content $_ }
