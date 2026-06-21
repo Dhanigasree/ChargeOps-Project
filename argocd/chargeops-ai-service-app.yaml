@@ -11,7 +11,7 @@ spec:
     path: k8s/chargeops
   destination:
     server: https://kubernetes.default.svc
-    namespace: chargeops
+    namespace: prod
   syncPolicy:
     automated:
       prune: true

@@ -23,6 +23,7 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
+      serviceAccountName: payment-service
       initContainers:
         - name: wait-for-mongodb
           image: busybox:1.36
@@ -32,7 +33,7 @@ spec:
             - until nc -z mongodb 27017; do echo "waiting for mongodb"; sleep 5; done
       containers:
         - name: payment-service
-          image: dhaniga/payment-service:v1
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service:latest
           imagePullPolicy: Always
           ports:
             - name: http
@@ -97,6 +98,30 @@ spec:
                   key: STRIPE_SECRET_KEY
             - name: BOOKING_SERVICE_URL
               value: http://booking-service:8004
+            - name: USER_SERVICE_URL
+              value: http://user-service:8002
+            - name: STATION_SERVICE_URL
+              value: http://station-service:8003
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: chargeops-config
+                  key: AWS_REGION
+            - name: S3_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: chargeops-config
+                  key: PAYMENT_INVOICE_BUCKET_NAME
+            - name: SQS_QUEUE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chargeops-config
+                  key: SQS_QUEUE_URL
+            - name: SQS_NOTIFICATION_QUEUE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chargeops-config
+                  key: SQS_NOTIFICATION_QUEUE_URL
             - name: MONGO_URI
               value: mongodb://$(MONGO_ROOT_USERNAME):$(MONGO_ROOT_PASSWORD)@$(MONGO_HOST):27017/ev-payment-service?authSource=admin
           livenessProbe:

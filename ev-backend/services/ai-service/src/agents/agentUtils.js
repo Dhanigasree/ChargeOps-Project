@@ -6,13 +6,13 @@ export const classifyIntent = (message = "") => {
   if (/(co2|carbon|green|sustain|environment|emission)/.test(lower)) {
     return "sustainability";
   }
-  if (/(report|monthly report|download)/.test(lower)) {
+  if (/(report|monthly report)/.test(lower)) {
     return "report";
   }
   if (/(utilization|maintenance|region|demand|revenue|admin|highest)/.test(lower)) {
     return "analytics";
   }
-  if (/(spend|spent|payment|cost|bill|paid|trend)/.test(lower)) {
+  if (/(spend|spent|payment|cost|bill|invoice|receipt|download|paid|trend)/.test(lower)) {
     return "payment";
   }
   if (/(review|rating|feedback|best rated|sentiment)/.test(lower)) {

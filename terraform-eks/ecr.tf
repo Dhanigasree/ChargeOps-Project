@@ -1,0 +1,42 @@
+resource "aws_ecr_repository" "services" {
+  for_each = var.ecr_repositories
+
+  name                 = "chargeops/${each.key}"
+  image_tag_mutability = "MUTABLE"
+
+  encryption_configuration {
+    encryption_type = "KMS"
+    kms_key         = aws_kms_key.s3.arn
+  }
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name = "chargeops/${each.key}"
+  }
+}
+
+resource "aws_ecr_lifecycle_policy" "services" {
+  for_each = aws_ecr_repository.services
+
+  repository = each.value.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep the latest 30 images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 30
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}

@@ -1,6 +1,6 @@
 import { getUtilizationMetrics } from "./adminTool.js";
 import { analyzeBookings, createBooking } from "./bookingTool.js";
-import { getSpendingHistory } from "./paymentTool.js";
+import { getLatestInvoice, getPaymentInvoices, getSpendingHistory } from "./paymentTool.js";
 import { getStationReviews } from "./reviewTool.js";
 import { searchStations } from "./stationTool.js";
 import { getUserProfile } from "./userTool.js";
@@ -10,6 +10,8 @@ export const tools = {
   create_booking: createBooking,
   analyze_bookings: analyzeBookings,
   get_spending_history: getSpendingHistory,
+  get_latest_invoice: getLatestInvoice,
+  get_payment_invoices: getPaymentInvoices,
   get_station_reviews: getStationReviews,
   get_user_profile: getUserProfile,
   get_utilization_metrics: getUtilizationMetrics

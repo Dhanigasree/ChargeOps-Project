@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - namespace.yaml
+  - storageclass.yaml
   - configmap.yaml
   - secrets.yaml
   - network-policies.yaml
@@ -9,3 +10,4 @@ resources:
   - backend-services.yaml
   - mongodb.yaml
   - frontend.yaml
+  - ingress.yaml

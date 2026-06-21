@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ai-service
-  namespace: chargeops
+  namespace: prod
   labels:
     app: ai-service
     tier: backend
@@ -24,14 +24,14 @@ spec:
           type: RuntimeDefault
       containers:
         - name: ai-service
-          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/chargeops/ai-service:v1
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/ai-service:latest
           imagePullPolicy: Always
           ports:
             - name: http
-              containerPort: 8008
+              containerPort: 3000
           env:
             - name: PORT
-              value: "8008"
+              value: "3000"
             - name: NODE_ENV
               valueFrom:
                 configMapKeyRef:
@@ -72,6 +72,16 @@ spec:
                 configMapKeyRef:
                   name: ai-service-config
                   key: SERVICE_REQUEST_TIMEOUT_MS
+            - name: REPORTS_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: REPORTS_BUCKET_NAME
+            - name: USER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ai-service-config
+                  key: USER_SERVICE_URL
             - name: STATION_SERVICE_URL
               valueFrom:
                 configMapKeyRef:
@@ -138,6 +148,6 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: ai-service
-  namespace: chargeops
+  namespace: prod
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/chargeops-ai-service-irsa
+    eks.amazonaws.com/role-arn: arn:aws:iam::497676936148:role/chargeops-eks-ai-service

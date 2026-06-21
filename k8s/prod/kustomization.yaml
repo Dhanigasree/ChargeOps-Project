@@ -9,6 +9,7 @@ resources:
   - ai-service.yaml
   - api-gateway.yaml
   - backend-services.yaml
+  - sqs-workers.yaml
   - mongodb.yaml
   - frontend.yaml
   - ingress.yaml

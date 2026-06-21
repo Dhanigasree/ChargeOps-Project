@@ -57,3 +57,48 @@ output "uploads_bucket_name" {
   description = "Uploads S3 bucket name."
   value       = aws_s3_bucket.chargeops["uploads"].bucket
 }
+
+output "payment_bills_bucket_name" {
+  description = "Private payment invoice S3 bucket name."
+  value       = aws_s3_bucket.chargeops["payment_bills"].bucket
+}
+
+output "payment_service_role_arn" {
+  description = "IRSA role ARN for ChargeOps payment service invoice access."
+  value       = aws_iam_role.payment_service.arn
+}
+
+output "sqs_queue_url" {
+  description = "ChargeOps events SQS queue URL."
+  value       = aws_sqs_queue.chargeops_events.id
+}
+
+output "sqs_queue_arn" {
+  description = "ChargeOps events SQS queue ARN."
+  value       = aws_sqs_queue.chargeops_events.arn
+}
+
+output "sqs_dlq_url" {
+  description = "ChargeOps events SQS dead-letter queue URL."
+  value       = aws_sqs_queue.chargeops_events_dlq.id
+}
+
+output "sqs_notification_queue_url" {
+  description = "ChargeOps notification worker SQS queue URL."
+  value       = aws_sqs_queue.chargeops_notifications.id
+}
+
+output "booking_service_role_arn" {
+  description = "IRSA role ARN for ChargeOps booking service SQS publishing."
+  value       = aws_iam_role.booking_service.arn
+}
+
+output "invoice_worker_role_arn" {
+  description = "IRSA role ARN for ChargeOps invoice worker."
+  value       = aws_iam_role.invoice_worker.arn
+}
+
+output "notification_worker_role_arn" {
+  description = "IRSA role ARN for ChargeOps notification worker."
+  value       = aws_iam_role.notification_worker.arn
+}

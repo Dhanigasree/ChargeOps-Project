@@ -36,3 +36,19 @@ export const paymentIdSchema = z.object({
   }),
   query: z.object({}).default({})
 });
+
+export const invoiceIdSchema = z.object({
+  body: z.object({}).default({}),
+  params: z.object({
+    invoiceId: z.string().min(1, "Invoice id is required")
+  }),
+  query: z.object({}).default({})
+});
+
+export const generateInvoiceSchema = z.object({
+  body: z.object({
+    paymentId: objectIdSchema
+  }),
+  params: z.object({}).default({}),
+  query: z.object({}).default({})
+});

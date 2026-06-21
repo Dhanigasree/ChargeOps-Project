@@ -1,4 +1,4 @@
-import { Bot, CalendarRange, LayoutDashboard, MapPinned, UserRound } from "lucide-react";
+import { Bot, CalendarRange, CreditCard, LayoutDashboard, MapPinned, UserRound } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import sidebarOfferImage from "../assets/sidebar-offer.jpg";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -10,6 +10,7 @@ const Sidebar = () => {
     { label: "Home", to: "/dashboard", icon: LayoutDashboard },
     { label: "Stations", to: "/stations", icon: MapPinned },
     { label: "Bookings", to: "/bookings", icon: CalendarRange },
+    { label: "Payments", to: "/payments", icon: CreditCard },
     { label: "AI Assistant", to: "/assistant", icon: Bot },
     { label: "Profile", to: "/profile", icon: UserRound }
   ];

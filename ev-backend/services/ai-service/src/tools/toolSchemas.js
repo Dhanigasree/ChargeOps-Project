@@ -65,6 +65,32 @@ export const toolConfig = {
     },
     {
       toolSpec: {
+        name: "get_latest_invoice",
+        description: "Retrieve the signed-in user's latest successful payment invoice metadata and secure presigned download URL.",
+        inputSchema: {
+          json: {
+            type: "object",
+            properties: {}
+          }
+        }
+      }
+    },
+    {
+      toolSpec: {
+        name: "get_payment_invoices",
+        description: "Retrieve signed-in user's successful payment invoices for all time, this month, or last month, including secure invoice URLs when available.",
+        inputSchema: {
+          json: {
+            type: "object",
+            properties: {
+              period: { type: "string", description: "Requested period such as this_month, last_month, all_time." }
+            }
+          }
+        }
+      }
+    },
+    {
+      toolSpec: {
         name: "get_station_reviews",
         description: "Retrieve reviews for a known station ID.",
         inputSchema: {

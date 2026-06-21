@@ -1,4 +1,5 @@
 import Booking from "../models/Booking.js";
+import { publishChargeOpsEvent } from "../services/eventPublisher.js";
 
 export const createBooking = async (req, res) => {
   const slotTime = new Date(req.body.slotTime);
@@ -28,6 +29,13 @@ export const createBooking = async (req, res) => {
     stationId: req.body.stationId,
     slotTime,
     amount: req.body.amount
+  });
+
+  await publishChargeOpsEvent({
+    type: "BOOKING_CREATED",
+    aggregateId: String(booking._id),
+    userId: booking.userId,
+    data: booking.toSanitizedJSON()
   });
 
   return res.status(201).json({

@@ -49,7 +49,11 @@ export const paymentApi = {
   create: (payload) => api.post("/payments/create", payload),
   mockPay: (payload) => api.post("/payments/mock-pay", payload),
   verifyStripeSession: (sessionId) => api.get("/payments/checkout/verify", { params: { session_id: sessionId } }),
-  getById: (paymentId) => api.get(`/payments/${paymentId}`)
+  getById: (paymentId) => api.get(`/payments/${paymentId}`),
+  history: () => api.get("/payments/history"),
+  generateInvoice: (paymentId) => api.post("/payments/generate-invoice", { paymentId }),
+  getInvoice: (invoiceId) => api.get(`/payments/invoice/${invoiceId}`),
+  downloadInvoice: (invoiceId) => api.get(`/payments/download/${invoiceId}`)
 };
 
 export const reviewApi = {

@@ -55,6 +55,27 @@ const paymentSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
       index: true
+    },
+    invoiceNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true
+    },
+    invoiceUrl: {
+      type: String,
+      default: ""
+    },
+    s3Key: {
+      type: String,
+      default: ""
+    },
+    invoiceCreatedAt: {
+      type: Date
+    },
+    stationName: {
+      type: String,
+      default: ""
     }
   },
   {
@@ -75,6 +96,12 @@ paymentSchema.methods.toSanitizedJSON = function toSanitizedJSON() {
     transactionId: this.transactionId,
     stripeSessionId: this.stripeSessionId,
     stripePaymentIntentId: this.stripePaymentIntentId,
+    invoiceNumber: this.invoiceNumber,
+    invoiceUrl: this.invoiceUrl,
+    s3Key: this.s3Key,
+    invoiceS3Key: this.s3Key,
+    invoiceCreatedAt: this.invoiceCreatedAt,
+    stationName: this.stationName,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt
   };

@@ -1,6 +1,12 @@
 import { env } from "../config/env.js";
 import { getStripeClient } from "../config/stripe.js";
 import Payment from "../models/Payment.js";
+import { publishChargeOpsEvent } from "../services/eventPublisher.js";
+import { ensureInvoiceForPayment, getInvoiceDocumentForUser, getInvoiceForUser } from "../services/invoiceService.js";
+
+const log = (event, details = {}) => {
+  console.info(JSON.stringify({ event, service: "payment-service", ...details }));
+};
 
 const updateBookingPaymentStatus = async (bookingId, paymentStatus) => {
   const response = await fetch(`${env.bookingServiceUrl}/api/bookings/${bookingId}/payment-status`, {
@@ -22,6 +28,7 @@ const updateBookingPaymentStatus = async (bookingId, paymentStatus) => {
 };
 
 export const createPayment = async (req, res) => {
+  log("payment_received", { provider: "stripe", bookingId: req.body.bookingId, userId: req.user.id, amount: req.body.amount });
   if (req.body.paymentMethod !== "card") {
     return res.status(400).json({
       success: false,
@@ -93,6 +100,7 @@ export const createPayment = async (req, res) => {
     stripeSessionId: session.id,
     status: "pending"
   });
+  log("payment_mongodb_insert_success", { paymentId: String(payment._id), status: payment.status, bookingId: payment.bookingId });
 
   return res.status(201).json({
     success: true,
@@ -106,6 +114,7 @@ export const createPayment = async (req, res) => {
 };
 
 export const createMockPayment = async (req, res) => {
+  log("payment_received", { provider: "mock", bookingId: req.body.bookingId, userId: req.user.id, amount: req.body.amount });
   const existingPayment = await Payment.findOne({
     bookingId: req.body.bookingId,
     userId: req.user.id,
@@ -134,6 +143,13 @@ export const createMockPayment = async (req, res) => {
     currency,
     transactionId: `mock_${req.body.bookingId}_${Date.now()}`,
     status: "success"
+  });
+  log("payment_mongodb_insert_success", { paymentId: String(payment._id), status: payment.status, bookingId: payment.bookingId });
+  await publishChargeOpsEvent({
+    type: "PAYMENT_SUCCESS",
+    aggregateId: String(payment._id),
+    userId: payment.userId,
+    data: payment.toSanitizedJSON()
   });
 
   return res.status(201).json({
@@ -181,12 +197,20 @@ export const verifyStripeSession = async (req, res) => {
       payment.stripePaymentIntentId =
         typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
       await payment.save();
+      log("payment_mongodb_update_success", { paymentId: String(payment._id), status: payment.status, stripeSessionId: session.id });
     } catch (error) {
       payment.status = "failed";
       await payment.save();
       throw error;
     }
   }
+
+  await publishChargeOpsEvent({
+    type: "PAYMENT_SUCCESS",
+    aggregateId: String(payment._id),
+    userId: payment.userId,
+    data: payment.toSanitizedJSON()
+  });
 
   return res.status(200).json({
     success: true,
@@ -225,6 +249,91 @@ export const getUserPayments = async (req, res) => {
     success: true,
     data: payments.map((payment) => payment.toSanitizedJSON())
   });
+};
+
+export const getPaymentHistory = async (req, res) => {
+  const payments = await Payment.find({ userId: req.user.id }).sort({ createdAt: -1 });
+  const data = [];
+
+  for (const payment of payments) {
+    if (payment.status === "success") {
+      await ensureInvoiceForPayment({ payment, authorization: req.headers.authorization });
+    }
+
+    data.push(payment.toSanitizedJSON());
+  }
+
+  log("payment_history_response_success", { userId: req.user.id, count: data.length });
+
+  return res.status(200).json({
+    success: true,
+    data
+  });
+};
+
+export const generateInvoice = async (req, res) => {
+  const payment = await Payment.findOne({
+    _id: req.body.paymentId,
+    status: "success"
+  });
+
+  if (!payment) {
+    return res.status(404).json({
+      success: false,
+      message: "Successful payment not found"
+    });
+  }
+
+  if (req.user.role !== "admin" && payment.userId !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: "You are not allowed to generate this invoice"
+    });
+  }
+
+  await ensureInvoiceForPayment({ payment, authorization: req.headers.authorization });
+
+  return res.status(201).json({
+    success: true,
+    message: "Invoice generated successfully",
+    data: payment.toSanitizedJSON()
+  });
+};
+
+export const getInvoice = async (req, res) => {
+  const invoice = await getInvoiceDocumentForUser({
+    invoiceId: req.params.invoiceId,
+    user: req.user
+  });
+
+  if (!invoice) {
+    return res.status(404).json({
+      success: false,
+      message: "Invoice not found"
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: invoice.toSanitizedJSON()
+  });
+};
+
+export const downloadInvoice = async (req, res) => {
+  const invoice = await getInvoiceDocumentForUser({
+    invoiceId: req.params.invoiceId,
+    user: req.user
+  });
+
+  if (!invoice) {
+    return res.status(404).json({
+      success: false,
+      message: "Invoice not found"
+    });
+  }
+
+  log("invoice_download_url_response_success", { invoiceId: String(invoice._id), invoiceNumber: invoice.invoiceNumber, userId: req.user.id });
+  return res.redirect(invoice.invoiceUrl);
 };
 
 export const getAllPayments = async (req, res) => {

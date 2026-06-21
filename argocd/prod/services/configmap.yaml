@@ -5,11 +5,17 @@ metadata:
   namespace: prod
 data:
   NODE_ENV: production
-  ALLOWED_ORIGINS: https://chargeops.example.com
+  ALLOWED_ORIGINS: "*"
   JWT_EXPIRES_IN: 7d
   ALLOW_ADMIN_REGISTRATION: "false"
   AUTO_SEED_STATIONS: "true"
   STRIPE_CURRENCY: usd
   STRIPE_MIN_CHARGE_AMOUNT: "0.5"
-  FRONTEND_APP_URL: https://chargeops.example.com
+  FRONTEND_APP_URL: http://prod.chargeops.local
+  AWS_REGION: ap-south-1
+  PAYMENT_INVOICE_BUCKET_NAME: chargeops-payment-bills-497676936148-ap-south-1
+  SQS_QUEUE_URL: https://sqs.ap-south-1.amazonaws.com/497676936148/chargeops-events
+  SQS_NOTIFICATION_QUEUE_URL: https://sqs.ap-south-1.amazonaws.com/497676936148/chargeops-notifications
+  REACT_APP_API_URL: /api
   MONGO_HOST: mongodb
+  MONGO_URI: mongodb://admin:password123@mongodb:27017/chargeops?authSource=admin
