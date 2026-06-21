@@ -38,7 +38,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: ${{ env.SERVICE_DIR }}/package.json
 
@@ -51,9 +51,11 @@ jobs:
         run: npm test
 
       - name: Build Docker image for scan
+        if: success()
         run: docker build -t ai-service:${{ github.sha }} ${{ env.SERVICE_DIR }}
 
       - name: Security scan
+        if: success()
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ai-service:${{ github.sha }}
@@ -63,7 +65,7 @@ jobs:
           exit-code: "0"
 
       - name: Upload Trivy results
-        if: always()
+        if: hashFiles('trivy-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif

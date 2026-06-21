@@ -13,7 +13,7 @@ jobs:
     with:
       service: frontend
       working_directory: ev-frontend
-      node_version: "20"
+      node_version: "24"
       test_command: "npm run test -- --coverage --watchAll=false"
       sonar_project_base_dir: ev-frontend
       pr_number: ${{ github.event.pull_request.number }}

@@ -13,7 +13,7 @@ jobs:
     with:
       service: admin-service
       working_directory: ev-backend/services/admin-service
-      node_version: "20"
+      node_version: "24"
       test_command: "npm run test -- --coverage"
       sonar_project_base_dir: ev-backend/services/admin-service
       pr_number: ${{ github.event.pull_request.number }}

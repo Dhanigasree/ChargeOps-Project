@@ -1,0 +1,80 @@
+name: Deploy to EKS
+
+on:
+  workflow_run:
+    workflows: ["Build and Scan"]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ap-south-1
+  EKS_CLUSTER_NAME: chargeops-eks
+  NAMESPACE: prod
+  APP_URL: http://k8s-chargeopsprod-8e8ddb2bbe-2076813774.ap-south-1.elb.amazonaws.com
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+
+      - name: Ensure Kubernetes secrets
+        run: |
+          kubectl create secret generic chargeops-secrets \
+            --namespace "$NAMESPACE" \
+            --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            --from-literal=API_KEY="${{ secrets.INTERNAL_SERVICE_API_KEY }}" \
+            --from-literal=MONGO_ROOT_USERNAME="${{ secrets.MONGO_ROOT_USERNAME }}" \
+            --from-literal=MONGO_ROOT_PASSWORD="${{ secrets.MONGO_ROOT_PASSWORD }}" \
+            --from-literal=STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy manifests
+        run: |
+          kubectl apply -f k8s/prod/configmap.yaml
+          kubectl apply -f k8s/prod/backend-services.yaml
+          kubectl apply -f k8s/prod/api-gateway.yaml
+          kubectl apply -f k8s/prod/ai-service.yaml
+          kubectl apply -f k8s/prod/sqs-workers.yaml
+          kubectl apply -f k8s/prod/frontend.yaml
+          kubectl apply -f k8s/prod/ingress.yaml
+
+      - name: Verify rollout
+        run: |
+          kubectl rollout status deployment/frontend -n "$NAMESPACE" --timeout=180s
+          kubectl rollout status deployment/api-gateway -n "$NAMESPACE" --timeout=180s
+          kubectl rollout status deployment/payment-service -n "$NAMESPACE" --timeout=180s
+          kubectl rollout status deployment/booking-service -n "$NAMESPACE" --timeout=180s
+          kubectl rollout status deployment/ai-service -n "$NAMESPACE" --timeout=180s
+          kubectl rollout status deployment/invoice-worker -n "$NAMESPACE" --timeout=180s
+          kubectl rollout status deployment/notification-worker -n "$NAMESPACE" --timeout=180s
+
+      - name: Smoke tests
+        run: |
+          curl -fsS "$APP_URL/" >/dev/null
+          curl -fsS "$APP_URL/api/payments/health" >/dev/null
+          curl -fsS "$APP_URL/api/ai/health" >/dev/null
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          kubectl get pods -n "$NAMESPACE"
+          kubectl get svc -n "$NAMESPACE"

@@ -1,0 +1,112 @@
+name: Build and Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ev-frontend/**"
+      - "ev-backend/services/**"
+      - ".github/workflows/build.yml"
+
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
+
+env:
+  AWS_REGION: ap-south-1
+  AWS_ACCOUNT_ID: "497676936148"
+
+jobs:
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: frontend
+            context: ev-frontend
+            image: chargeops/frontend
+          - service: api-gateway
+            context: ev-backend/services/api-gateway
+            image: chargeops/api-gateway
+          - service: auth-service
+            context: ev-backend/services/auth-service
+            image: chargeops/auth-service
+          - service: user-service
+            context: ev-backend/services/user-service
+            image: chargeops/user-service
+          - service: station-service
+            context: ev-backend/services/station-service
+            image: chargeops/station-service
+          - service: booking-service
+            context: ev-backend/services/booking-service
+            image: chargeops/booking-service
+          - service: payment-service
+            context: ev-backend/services/payment-service
+            image: chargeops/payment-service
+          - service: review-service
+            context: ev-backend/services/review-service
+            image: chargeops/review-service
+          - service: admin-service
+            context: ev-backend/services/admin-service
+            image: chargeops/admin-service
+          - service: ai-service
+            context: ev-backend/services/ai-service
+            image: chargeops/ai-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ${{ matrix.context }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.context }}
+        run: npm install
+
+      - name: Lint
+        working-directory: ${{ matrix.context }}
+        run: npm run lint --if-present
+
+      - name: Test
+        working-directory: ${{ matrix.context }}
+        run: npm test --if-present
+
+      - name: Configure AWS credentials
+        if: success()
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: success()
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        if: success()
+        run: |
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${{ matrix.image }}:${GITHUB_SHA}
+          docker build -t "$IMAGE_URI" "${{ matrix.context }}"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+
+      - name: Trivy image scan
+        if: success()
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_URI }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Push Docker image
+        if: success()
+        run: docker push "$IMAGE_URI"
