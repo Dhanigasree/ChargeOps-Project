@@ -123,6 +123,7 @@ variable "tags" {
   default = {
     Project     = "ChargeOps"
     Environment = "production"
+    Owner       = "ChargeOps-Team"
     ManagedBy   = "Terraform"
     Platform    = "EKS"
   }
