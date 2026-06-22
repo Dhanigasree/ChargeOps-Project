@@ -1275,7 +1275,7 @@ spec:
       containers:
       - args:
         - --cluster-name=chargeops-eks
-        - --aws-vpc-id=vpc-0acc7e08269c564b4
+        - --aws-vpc-id=vpc-0e3c9d59a86220e1a
         - --aws-region=ap-south-1
         - --ingress-class=alb
         image: public.ecr.aws/eks/aws-load-balancer-controller:v2.14.1
