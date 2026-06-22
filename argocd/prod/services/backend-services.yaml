@@ -569,7 +569,7 @@ spec:
             - until nc -z mongodb 27017; do echo "waiting for mongodb"; sleep 5; done
       containers:
         - name: payment-service
-          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service:payment-v9
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service:payment-service-v10
           imagePullPolicy: Always
           ports:
             - name: http
