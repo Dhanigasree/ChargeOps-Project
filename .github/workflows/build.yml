@@ -79,6 +79,20 @@ jobs:
         working-directory: ${{ matrix.context }}
         run: npm test --if-present
 
+      - name: SonarQube scan
+        if: success() && matrix.service == 'frontend'
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: SonarQube Quality Gate
+        if: success() && matrix.service == 'frontend'
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
       - name: Configure AWS credentials
         if: success()
         uses: aws-actions/configure-aws-credentials@v4
