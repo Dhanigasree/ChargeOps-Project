@@ -59,6 +59,32 @@ jobs:
             echo "No test script found, skipping tests for this service"
           fi
 
+      - name: SonarCloud code quality scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=Dhanigasree_ChargeOps
+            -Dsonar.organization=dhanigasree
+            -Dsonar.sources=${{ env.SERVICE_DIR }}
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/coverage/**
+            -Dsonar.qualitygate.wait=true
+
+      - name: Snyk dependency scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --file=${{ env.SERVICE_DIR }}/package.json --severity-threshold=high
+
+      - name: Snyk summary
+        if: always()
+        run: |
+          echo "Snyk dependency scan completed for ${SERVICE} with threshold high."
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
