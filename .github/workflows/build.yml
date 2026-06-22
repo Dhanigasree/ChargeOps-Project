@@ -2,11 +2,20 @@ name: Build and Scan
 
 on:
   push:
+    branches: [main, test]
+    paths:
+      - "ev-frontend/**"
+      - "ev-backend/services/**"
+      - ".github/workflows/build.yml"
+      - "sonar-project.properties"
+  pull_request:
     branches: [main]
     paths:
       - "ev-frontend/**"
       - "ev-backend/services/**"
       - ".github/workflows/build.yml"
+      - "sonar-project.properties"
+  workflow_dispatch:
 
 permissions:
   contents: read
