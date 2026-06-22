@@ -143,27 +143,23 @@ jobs:
           import os
           from pathlib import Path
           image = os.environ["IMAGE_URI"]
-          service = os.environ["SERVICE"]
+          repo = os.environ["ECR_REPOSITORY"]
           changed = False
           for path in [Path(p.strip()) for p in os.environ["MANIFEST_PATHS"].splitlines() if p.strip()]:
+              if not path.exists():
+                  continue
               lines = path.read_text(encoding="utf-8").splitlines()
               updated = []
-              in_container = False
               for line in lines:
                   stripped = line.strip()
-                  if stripped == f"- name: {service}":
-                      in_container = True
-                  elif stripped.startswith("- name: ") and stripped != f"- name: {service}":
-                      in_container = False
-                  if in_container and stripped.startswith("image:"):
+                  if stripped.startswith("image:") and repo in stripped:
                       indent = line[: len(line) - len(line.lstrip())]
                       line = f"{indent}image: {image}"
                       changed = True
-                      in_container = False
                   updated.append(line)
               path.write_text("\n".join(updated) + "\n", encoding="utf-8")
           if not changed:
-              raise SystemExit(f"No image line updated for {service}")
+              raise SystemExit(f"No image line updated for {repo}")
           PY
 
       - name: Commit updated image tag
