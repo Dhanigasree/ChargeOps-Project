@@ -1,6 +1,7 @@
 name: Review Service CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -8,7 +9,6 @@ on:
     paths:
       - "ev-backend/services/review-service/**"
       - ".github/workflows/ci-review-service.yml"
-  workflow_dispatch:
 
 permissions:
   contents: write

@@ -1,6 +1,7 @@
 name: Frontend CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -8,7 +9,6 @@ on:
     paths:
       - "ev-frontend/**"
       - ".github/workflows/ci-frontend.yml"
-  workflow_dispatch:
 
 permissions:
   contents: write

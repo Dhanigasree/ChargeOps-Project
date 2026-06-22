@@ -1,6 +1,7 @@
 name: Station Service CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -8,7 +9,6 @@ on:
     paths:
       - "ev-backend/services/station-service/**"
       - ".github/workflows/ci-station-service.yml"
-  workflow_dispatch:
 
 permissions:
   contents: write

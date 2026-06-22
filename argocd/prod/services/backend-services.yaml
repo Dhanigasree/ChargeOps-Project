@@ -34,6 +34,9 @@ spec:
         - name: auth-service
           image: dhaniga/auth-service:v1
           imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: mongo-secret
           ports:
             - name: http
               containerPort: 8001
@@ -165,6 +168,9 @@ spec:
         - name: user-service
           image: dhaniga/user-service:v1
           imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: mongo-secret
           ports:
             - name: http
               containerPort: 8002
@@ -286,6 +292,9 @@ spec:
         - name: station-service
           image: dhaniga/station-service:v1
           imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: mongo-secret
           ports:
             - name: http
               containerPort: 8003
@@ -421,6 +430,9 @@ spec:
         - name: booking-service
           image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/booking-service:latest
           imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: mongo-secret
           ports:
             - name: http
               containerPort: 8004
@@ -571,6 +583,9 @@ spec:
         - name: payment-service
           image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service:payment-service-v10
           imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: mongo-secret
           ports:
             - name: http
               containerPort: 8005
@@ -743,6 +758,9 @@ spec:
         - name: review-service
           image: dhaniga/review-service:v1
           imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: mongo-secret
           ports:
             - name: http
               containerPort: 8006
@@ -864,6 +882,9 @@ spec:
         - name: admin-service
           image: dhaniga/admin-service:v1
           imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: mongo-secret
           ports:
             - name: http
               containerPort: 8007

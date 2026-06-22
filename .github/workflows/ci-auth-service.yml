@@ -1,6 +1,7 @@
 name: Auth Service CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -8,7 +9,6 @@ on:
     paths:
       - "ev-backend/services/auth-service/**"
       - ".github/workflows/ci-auth-service.yml"
-  workflow_dispatch:
 
 permissions:
   contents: write
