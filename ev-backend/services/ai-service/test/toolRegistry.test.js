@@ -6,6 +6,8 @@ test("registers all ChargeOps agent tools", () => {
   assert.deepEqual(Object.keys(tools).sort(), [
     "analyze_bookings",
     "create_booking",
+    "get_latest_invoice",
+    "get_payment_invoices",
     "get_spending_history",
     "get_station_reviews",
     "get_user_profile",
