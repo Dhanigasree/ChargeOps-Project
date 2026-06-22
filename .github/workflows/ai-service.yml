@@ -1,20 +1,7 @@
 name: AI Service
 
 on:
-  push:
-    branches: [dev, main, test]
-    paths:
-      - "ev-backend/services/ai-service/**"
-      - "k8s/prod/ai-service.yaml"
-      - "argocd/prod/services/ai-service.yaml"
-      - ".github/workflows/ai-service.yml"
-  pull_request:
-    branches: [dev, main, test]
-    paths:
-      - "ev-backend/services/ai-service/**"
-      - "k8s/prod/ai-service.yaml"
-      - "argocd/prod/services/ai-service.yaml"
-      - ".github/workflows/ai-service.yml"
+  workflow_dispatch:
 
 permissions:
   contents: write

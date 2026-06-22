@@ -1,0 +1,126 @@
+name: Review Service CI
+
+on:
+  push:
+    branches: [main, test]
+    paths:
+      - "ev-backend/services/review-service/**"
+      - ".github/workflows/ci-review-service.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  security-events: write
+
+env:
+  AWS_REGION: ap-south-1
+  AWS_ACCOUNT_ID: "497676936148"
+  SERVICE: review-service
+  SERVICE_DIR: ev-backend/services/review-service
+  ECR_REPOSITORY: chargeops/review-service
+  MANIFEST_PATHS: argocd/prod/services/backend-services.yaml
+
+jobs:
+  ci:
+    name: Build, scan, push, and promote review-service
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ${{ env.SERVICE_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: npm install
+
+      - name: Lint
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: npm run lint --if-present
+
+      - name: Test
+        working-directory: ${{ env.SERVICE_DIR }}
+        shell: bash
+        run: |
+          if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts && pkg.scripts.test ? 0 : 1);"; then
+            npm test
+          else
+            echo "No test script found, skipping tests for this service"
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: |
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${GITHUB_SHA}
+          docker build -t "$IMAGE_URI" "$SERVICE_DIR"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_URI }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Push Docker image
+        run: docker push "$IMAGE_URI"
+
+      - name: Update ArgoCD image tag
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          image = os.environ["IMAGE_URI"]
+          service = os.environ["SERVICE"]
+          changed = False
+          for path in [Path(p.strip()) for p in os.environ["MANIFEST_PATHS"].splitlines() if p.strip()]:
+              lines = path.read_text(encoding="utf-8").splitlines()
+              updated = []
+              in_container = False
+              for line in lines:
+                  stripped = line.strip()
+                  if stripped == f"- name: {service}":
+                      in_container = True
+                  elif stripped.startswith("- name: ") and stripped != f"- name: {service}":
+                      in_container = False
+                  if in_container and stripped.startswith("image:"):
+                      indent = line[: len(line) - len(line.lstrip())]
+                      line = f"{indent}image: {image}"
+                      changed = True
+                      in_container = False
+                  updated.append(line)
+              path.write_text("\n".join(updated) + "\n", encoding="utf-8")
+          if not changed:
+              raise SystemExit(f"No image line updated for {service}")
+          PY
+
+      - name: Commit updated image tag
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add argocd/prod
+          if git diff --cached --quiet; then
+            echo "No image tag changes to commit."
+            exit 0
+          fi
+          git commit -m "ci: update review-service image to ${GITHUB_SHA} [skip ci]"
+          git push
