@@ -88,12 +88,22 @@ jobs:
           echo "Check the Quality Gate result in SonarCloud project Dhanigasree_ChargeOps."
 
       - name: Snyk dependency scan
-        uses: snyk/actions/node@master
+        working-directory: ${{ env.SERVICE_DIR }}
+        shell: bash
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: test
-          args: --file=${{ env.SERVICE_DIR }}/package.json --severity-threshold=high
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "SNYK_TOKEN GitHub secret is missing or invalid"
+            exit 1
+          fi
+
+          if ! npx snyk auth "$SNYK_TOKEN" >/dev/null 2>&1; then
+            echo "SNYK_TOKEN GitHub secret is missing or invalid"
+            exit 1
+          fi
+
+          npx snyk test --severity-threshold=high
 
       - name: Snyk summary
         if: always()
