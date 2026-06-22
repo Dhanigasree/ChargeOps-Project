@@ -46,6 +46,14 @@ jobs:
             --from-literal=MONGO_ROOT_PASSWORD="${{ secrets.MONGO_ROOT_PASSWORD }}" \
             --from-literal=STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
             --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic mongo-secret \
+            --namespace "$NAMESPACE" \
+            --from-literal=MONGO_ROOT_USERNAME="${{ secrets.MONGO_ROOT_USERNAME }}" \
+            --from-literal=MONGO_ROOT_PASSWORD="${{ secrets.MONGO_ROOT_PASSWORD }}" \
+            --from-literal=MONGO_URI="mongodb://${{ secrets.MONGO_ROOT_USERNAME }}:${{ secrets.MONGO_ROOT_PASSWORD }}@mongodb:27017/chargeops?authSource=admin" \
+            --from-literal=MONGODB_URI="mongodb://${{ secrets.MONGO_ROOT_USERNAME }}:${{ secrets.MONGO_ROOT_PASSWORD }}@mongodb:27017/chargeops?authSource=admin" \
+            --from-literal=DATABASE_URL="mongodb://${{ secrets.MONGO_ROOT_USERNAME }}:${{ secrets.MONGO_ROOT_PASSWORD }}@mongodb:27017/chargeops?authSource=admin" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy manifests
         run: |
