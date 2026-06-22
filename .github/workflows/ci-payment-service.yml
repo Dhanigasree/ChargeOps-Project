@@ -59,6 +59,15 @@ jobs:
             echo "No test script found, skipping tests for this service"
           fi
 
+      - name: Validate SonarCloud host
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          if [ "$SONAR_HOST_URL" != "https://sonarcloud.io" ]; then
+            echo "SONAR_HOST_URL must be exactly https://sonarcloud.io"
+            exit 1
+          fi
+
       - name: SonarCloud code quality scan
         uses: SonarSource/sonarqube-scan-action@v7
         env:
