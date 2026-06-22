@@ -94,7 +94,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then
-            echo "SNYK_TOKEN GitHub secret is missing or invalid"
+            echo "SNYK_TOKEN GitHub secret is missing"
             exit 1
           fi
 
