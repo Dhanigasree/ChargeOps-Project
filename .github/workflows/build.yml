@@ -122,7 +122,7 @@ jobs:
 
       - name: Trivy image scan
         if: success()
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_URI }}
           format: table
