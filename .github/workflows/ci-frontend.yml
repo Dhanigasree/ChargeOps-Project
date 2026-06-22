@@ -21,6 +21,7 @@ env:
   SERVICE: frontend
   SERVICE_DIR: ev-frontend
   ECR_REPOSITORY: chargeops/frontend
+  IMAGE_TAG: frontend-v${{ github.run_number }}
   MANIFEST_PATHS: argocd/prod/frontend/frontend.yaml
 
 jobs:
@@ -121,7 +122,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:frontend-v${GITHUB_RUN_NUMBER}
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
           docker build -t "$IMAGE_URI" "$SERVICE_DIR"
           echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
 

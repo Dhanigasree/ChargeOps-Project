@@ -21,6 +21,7 @@ env:
   SERVICE: api-gateway
   SERVICE_DIR: ev-backend/services/api-gateway
   ECR_REPOSITORY: chargeops/api-gateway
+  IMAGE_TAG: api-gateway-v${{ github.run_number }}
   MANIFEST_PATHS: argocd/prod/services/api-gateway.yaml
 
 jobs:
@@ -119,7 +120,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:api-gateway-v${GITHUB_RUN_NUMBER}
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
           docker build -t "$IMAGE_URI" "$SERVICE_DIR"
           echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
 

@@ -21,6 +21,7 @@ env:
   SERVICE: review-service
   SERVICE_DIR: ev-backend/services/review-service
   ECR_REPOSITORY: chargeops/review-service
+  IMAGE_TAG: review-service-v${{ github.run_number }}
   MANIFEST_PATHS: argocd/prod/services/backend-services.yaml
 
 jobs:
@@ -119,7 +120,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:review-service-v${GITHUB_RUN_NUMBER}
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
           docker build -t "$IMAGE_URI" "$SERVICE_DIR"
           echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
 
