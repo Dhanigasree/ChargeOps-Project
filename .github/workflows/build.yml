@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
   security-events: write
 
@@ -27,8 +27,8 @@ env:
   AWS_ACCOUNT_ID: "497676936148"
 
 jobs:
-  build:
-    name: Build ${{ matrix.service }}
+  test:
+    name: Test ${{ matrix.service }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -88,40 +88,89 @@ jobs:
         working-directory: ${{ matrix.context }}
         run: npm test --if-present
 
-      - name: SonarQube scan
-        if: success() && matrix.service == 'frontend'
+  sonarcloud:
+    name: SonarCloud Quality Gate
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarCloud scan
         uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      - name: SonarQube Quality Gate
-        if: success() && matrix.service == 'frontend'
+      - name: SonarCloud Quality Gate
         uses: SonarSource/sonarqube-quality-gate-action@v1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: sonarcloud
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: frontend
+            context: ev-frontend
+            image: chargeops/frontend
+          - service: api-gateway
+            context: ev-backend/services/api-gateway
+            image: chargeops/api-gateway
+          - service: auth-service
+            context: ev-backend/services/auth-service
+            image: chargeops/auth-service
+          - service: user-service
+            context: ev-backend/services/user-service
+            image: chargeops/user-service
+          - service: station-service
+            context: ev-backend/services/station-service
+            image: chargeops/station-service
+          - service: booking-service
+            context: ev-backend/services/booking-service
+            image: chargeops/booking-service
+          - service: payment-service
+            context: ev-backend/services/payment-service
+            image: chargeops/payment-service
+          - service: review-service
+            context: ev-backend/services/review-service
+            image: chargeops/review-service
+          - service: admin-service
+            context: ev-backend/services/admin-service
+            image: chargeops/admin-service
+          - service: ai-service
+            context: ev-backend/services/ai-service
+            image: chargeops/ai-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Configure AWS credentials
-        if: success()
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        if: success()
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build Docker image
-        if: success()
         run: |
           IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${{ matrix.image }}:${GITHUB_SHA}
           docker build -t "$IMAGE_URI" "${{ matrix.context }}"
           echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
 
       - name: Trivy image scan
-        if: success()
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_URI }}
@@ -131,5 +180,95 @@ jobs:
           ignore-unfixed: true
 
       - name: Push Docker image
-        if: success()
         run: docker push "$IMAGE_URI"
+
+      - name: Save image tag metadata
+        run: |
+          mkdir -p image-tags
+          echo "${{ matrix.service }}=${IMAGE_URI}" > "image-tags/${{ matrix.service }}.env"
+
+      - name: Upload image tag metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-tag-${{ matrix.service }}
+          path: image-tags/${{ matrix.service }}.env
+
+  update-image-tags:
+    name: Update ArgoCD image tags
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download image tag metadata
+        uses: actions/download-artifact@v4
+        with:
+          path: image-tags
+          pattern: image-tag-*
+          merge-multiple: true
+
+      - name: Update image tags in ArgoCD manifests
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          image_files = sorted(Path("image-tags").glob("*.env"))
+          replacements = {}
+          for image_file in image_files:
+              service, image_uri = image_file.read_text(encoding="utf-8").strip().split("=", 1)
+              replacements[service] = image_uri
+
+          manifest_paths = [
+              Path("argocd/prod/frontend/frontend.yaml"),
+              Path("argocd/prod/services/api-gateway.yaml"),
+              Path("argocd/prod/services/ai-service.yaml"),
+              Path("argocd/prod/services/backend-services.yaml"),
+              Path("argocd/prod/services/sqs-workers.yaml"),
+          ]
+
+          service_aliases = {
+              "frontend": ["chargeops/frontend", "dhaniga/frontend", "dhaniga/chargeops-frontend"],
+              "api-gateway": ["chargeops/api-gateway", "dhaniga/chargeops-api-gateway"],
+              "auth-service": ["chargeops/auth-service", "dhaniga/auth-service"],
+              "user-service": ["chargeops/user-service", "dhaniga/user-service"],
+              "station-service": ["chargeops/station-service", "dhaniga/station-service"],
+              "booking-service": ["chargeops/booking-service", "dhaniga/booking-service"],
+              "payment-service": ["chargeops/payment-service", "dhaniga/payment-service"],
+              "review-service": ["chargeops/review-service", "dhaniga/review-service"],
+              "admin-service": ["chargeops/admin-service", "dhaniga/admin-service"],
+              "ai-service": ["chargeops/ai-service"],
+          }
+
+          for manifest_path in manifest_paths:
+              if not manifest_path.exists():
+                  continue
+              lines = manifest_path.read_text(encoding="utf-8").splitlines()
+              updated = []
+              for line in lines:
+                  stripped = line.strip()
+                  if stripped.startswith("image:"):
+                      for service, aliases in service_aliases.items():
+                          if service in replacements and any(alias in stripped for alias in aliases):
+                              indent = line[: len(line) - len(line.lstrip())]
+                              line = f"{indent}image: {replacements[service]}"
+                              break
+                  updated.append(line)
+              manifest_path.write_text("\n".join(updated) + "\n", encoding="utf-8")
+          PY
+
+      - name: Commit updated image tags
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add argocd/prod
+          if git diff --cached --quiet; then
+            echo "No image tag changes to commit."
+            exit 0
+          fi
+          git commit -m "ci: update image tags to ${GITHUB_SHA}"
+          git push
