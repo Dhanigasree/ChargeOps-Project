@@ -1,6 +1,7 @@
 name: Payment Service CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -8,7 +9,6 @@ on:
     paths:
       - "ev-backend/services/payment-service/**"
       - ".github/workflows/ci-payment-service.yml"
-  workflow_dispatch:
 
 permissions:
   contents: write
