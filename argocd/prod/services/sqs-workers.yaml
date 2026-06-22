@@ -39,7 +39,7 @@ spec:
             - until nc -z mongodb 27017; do echo "waiting for mongodb"; sleep 5; done
       containers:
         - name: invoice-worker
-          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service:latest
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service:4cd8f289dcee817a5623e0d9b12c44d2f393bac4
           imagePullPolicy: Always
           command: ["node", "workers/invoiceWorker.js"]
           env:
@@ -140,7 +140,7 @@ spec:
             - until nc -z mongodb 27017; do echo "waiting for mongodb"; sleep 5; done
       containers:
         - name: notification-worker
-          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service:latest
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service:4cd8f289dcee817a5623e0d9b12c44d2f393bac4
           imagePullPolicy: Always
           command: ["node", "workers/notificationWorker.js"]
           env:
