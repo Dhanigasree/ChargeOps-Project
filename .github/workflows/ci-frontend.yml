@@ -2,11 +2,12 @@ name: Frontend CI
 
 on:
   push:
-    branches: [main, test]
+    branches:
+      - main
+      - test
     paths:
       - "ev-frontend/**"
       - ".github/workflows/ci-frontend.yml"
-      - "sonar-project.properties"
   workflow_dispatch:
 
 permissions:

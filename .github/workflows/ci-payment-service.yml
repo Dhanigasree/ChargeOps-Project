@@ -2,7 +2,9 @@ name: Payment Service CI
 
 on:
   push:
-    branches: [main, test]
+    branches:
+      - main
+      - test
     paths:
       - "ev-backend/services/payment-service/**"
       - ".github/workflows/ci-payment-service.yml"

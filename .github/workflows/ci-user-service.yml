@@ -2,7 +2,9 @@ name: User Service CI
 
 on:
   push:
-    branches: [main, test]
+    branches:
+      - main
+      - test
     paths:
       - "ev-backend/services/user-service/**"
       - ".github/workflows/ci-user-service.yml"

@@ -2,7 +2,9 @@ name: Auth Service CI
 
 on:
   push:
-    branches: [main, test]
+    branches:
+      - main
+      - test
     paths:
       - "ev-backend/services/auth-service/**"
       - ".github/workflows/ci-auth-service.yml"

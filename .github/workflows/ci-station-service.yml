@@ -2,7 +2,9 @@ name: Station Service CI
 
 on:
   push:
-    branches: [main, test]
+    branches:
+      - main
+      - test
     paths:
       - "ev-backend/services/station-service/**"
       - ".github/workflows/ci-station-service.yml"
