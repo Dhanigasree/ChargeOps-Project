@@ -10,6 +10,8 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+RUN apk update && apk upgrade --no-cache libcrypto3 libssl3 openssl
+
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY --from=deps /app/node_modules ./node_modules
