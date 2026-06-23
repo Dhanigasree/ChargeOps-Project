@@ -21,7 +21,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api-gateway
-          image: dhaniga/chargeops-api-gateway:v1
+          image: dhaniga/api-gateway:a7177e078a50e301cab5e5fb49ae5c6bf7b8f21d
           imagePullPolicy: Always
           ports:
             - name: http
