@@ -22,7 +22,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: frontend
-          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/frontend:latest
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/frontend:frontend-v8
           imagePullPolicy: Always
           ports:
             - name: http
