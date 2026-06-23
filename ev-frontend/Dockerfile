@@ -11,7 +11,7 @@ RUN npm run build
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 
 USER root
-RUN apk update && apk upgrade --no-cache libcrypto3 libssl3 openssl
+RUN apk update && apk upgrade --no-cache
 RUN mkdir -p /etc/nginx/templates /tmp/nginx /var/cache/nginx /var/run \
   && chown -R 101:0 /etc/nginx /tmp/nginx /var/cache/nginx /var/run /usr/share/nginx/html
 COPY --chown=101:0 nginx.conf /etc/nginx/templates/default.conf.template
