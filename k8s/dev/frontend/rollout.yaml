@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: dhaniga/frontend:08057cb0ed3a662ca399bb74b39e3cde8b0ccb20
+          image: dhaniga/frontend:27c084ed4cd8377486a8535f919414fa59580c13
           ports:
             - name: http
               containerPort: 80
