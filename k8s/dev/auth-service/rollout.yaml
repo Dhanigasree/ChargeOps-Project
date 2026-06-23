@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: dockerhubusername/auth-service:latest
+          image: dhaniga/auth-service:9a018a5dce1e7db0cf2ce2e07247e6ccefefe3aa
           ports:
             - name: http
               containerPort: 3001
