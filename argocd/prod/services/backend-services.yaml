@@ -166,7 +166,7 @@ spec:
             - until nc -z mongodb 27017; do echo "waiting for mongodb"; sleep 5; done
       containers:
         - name: user-service
-          image: dhaniga/user-service:v1
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/user-service:user-service-v6
           imagePullPolicy: Always
           envFrom:
             - secretRef:
