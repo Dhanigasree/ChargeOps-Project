@@ -142,20 +142,23 @@ jobs:
           from pathlib import Path
           image = os.environ["IMAGE_URI"]
           repo = os.environ["ECR_REPOSITORY"]
+          service = os.environ["SERVICE"]
           changed = False
           for path in [Path(p.strip()) for p in os.environ["MANIFEST_PATHS"].splitlines() if p.strip()]:
+              if not path.exists():
+                  continue
               lines = path.read_text(encoding="utf-8").splitlines()
               updated = []
               for line in lines:
                   stripped = line.strip()
-                  if stripped.startswith("image:") and repo in stripped:
+                  if stripped.startswith("image:") and (repo in stripped or f"/{service}:" in stripped):
                       indent = line[: len(line) - len(line.lstrip())]
                       line = f"{indent}image: {image}"
                       changed = True
                   updated.append(line)
               path.write_text("\n".join(updated) + "\n", encoding="utf-8")
           if not changed:
-              raise SystemExit(f"No image line updated for {repo}")
+              raise SystemExit(f"No image line updated for {repo} or {service}")
           PY
 
       - name: Commit updated image tag
@@ -163,10 +166,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add argocd/prod
+          git status --short
+          git add argocd/prod/services/ai-service.yaml
           if git diff --cached --quiet; then
-            echo "No image tag changes to commit."
+            echo "No ArgoCD image tag changes to commit"
             exit 0
           fi
           git commit -m "ci: update ai-service image to ${GITHUB_SHA} [skip ci]"
-          git push
+          git checkout -- .
+          git pull --rebase origin main
+          git push origin main
