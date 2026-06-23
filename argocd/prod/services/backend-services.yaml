@@ -880,7 +880,7 @@ spec:
             - until nc -z mongodb 27017; do echo "waiting for mongodb"; sleep 5; done
       containers:
         - name: admin-service
-          image: dhaniga/admin-service:v1
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/admin-service:admin-service-v6
           imagePullPolicy: Always
           envFrom:
             - secretRef:
