@@ -32,7 +32,7 @@ spec:
             - until nc -z mongodb 27017; do echo "waiting for mongodb"; sleep 5; done
       containers:
         - name: auth-service
-          image: dhaniga/auth-service:v1
+          image: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/auth-service:auth-service-v7
           imagePullPolicy: Always
           envFrom:
             - secretRef:
