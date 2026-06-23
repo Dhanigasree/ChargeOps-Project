@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: admin-service
-          image: dhaniga/admin-service:7b96b475f8094defa3a899d8ee23fe789c843e83
+          image: dhaniga/admin-service:2c883734a1fedd0c65e0cc2a5686a5944da8fd20
           ports:
             - name: http
               containerPort: 3000
