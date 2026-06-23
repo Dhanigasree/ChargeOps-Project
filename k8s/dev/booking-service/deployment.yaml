@@ -32,7 +32,7 @@ spec:
             - until nc -z mongodb 27017; do echo "waiting for mongodb"; sleep 5; done
       containers:
         - name: booking-service
-          image: dhaniga/booking-service:v1
+          image: dhaniga/booking-service:bf74c674d5a485df2ef5053f7262fa6080992b9b
           imagePullPolicy: Always
           ports:
             - name: http
