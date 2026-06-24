@@ -1,0 +1,22 @@
+# The shared Application owns only shared namespaced resources and ingress.
+secrets:
+  create: false
+
+mongodb:
+  enabled: false
+
+services:
+  frontend: {enabled: false}
+  api-gateway: {enabled: false}
+  auth-service: {enabled: false}
+  user-service: {enabled: false}
+  station-service: {enabled: false}
+  booking-service: {enabled: false}
+  payment-service: {enabled: false}
+  review-service: {enabled: false}
+  admin-service: {enabled: false}
+  ai-service: {enabled: false}
+
+workers:
+  invoice-worker: {enabled: false}
+  notification-worker: {enabled: false}

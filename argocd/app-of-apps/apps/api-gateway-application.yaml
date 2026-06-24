@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chargeops-api-gateway
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/Dhanigasree/ChargeOps.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/Dhanigasree/ChargeOps.git
+      targetRevision: main
+      path: helm/chargeops
+      helm:
+        releaseName: chargeops-api-gateway
+        valueFiles:
+          - $values/argocd/app-of-apps/values/component-base.yaml
+        parameters:
+          - name: services.api-gateway.enabled
+            value: "true"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - FailOnSharedResource=true
