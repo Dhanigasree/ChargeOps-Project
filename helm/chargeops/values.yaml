@@ -1,0 +1,549 @@
+namespaceOverride: prod
+
+imagePullPolicy: Always
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+mongodbWait:
+  image: busybox:1.36
+  command:
+    - sh
+    - -c
+    - until nc -z mongodb 27017; do echo "waiting for mongodb"; sleep 5; done
+
+configMaps:
+  chargeops-config:
+    NODE_ENV: production
+    ALLOWED_ORIGINS: "*"
+    JWT_EXPIRES_IN: 7d
+    ALLOW_ADMIN_REGISTRATION: "false"
+    AUTO_SEED_STATIONS: "true"
+    STRIPE_CURRENCY: usd
+    STRIPE_MIN_CHARGE_AMOUNT: "0.5"
+    FRONTEND_APP_URL: http://prod.chargeops.local
+    AWS_REGION: ap-south-1
+    PAYMENT_INVOICE_BUCKET_NAME: chargeops-payment-bills-497676936148-ap-south-1
+    SQS_QUEUE_URL: https://sqs.ap-south-1.amazonaws.com/497676936148/chargeops-events
+    SQS_NOTIFICATION_QUEUE_URL: https://sqs.ap-south-1.amazonaws.com/497676936148/chargeops-notifications
+    REACT_APP_API_URL: /api
+    MONGO_HOST: mongodb
+  ai-service-config:
+    NODE_ENV: production
+    ALLOWED_ORIGINS: "*"
+    AWS_REGION: ap-south-1
+    BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20240620-v1:0
+    BEDROCK_MAX_TOKENS: "1200"
+    BEDROCK_TEMPERATURE: "0.2"
+    CHAT_MEMORY_LIMIT: "8"
+    PAYMENT_INVOICE_BUCKET_NAME: chargeops-payment-bills-497676936148-ap-south-1
+    SERVICE_REQUEST_TIMEOUT_MS: "10000"
+    USER_SERVICE_URL: http://user-service:8002
+    STATION_SERVICE_URL: http://station-service:8003
+    BOOKING_SERVICE_URL: http://booking-service:8004
+    PAYMENT_SERVICE_URL: http://payment-service:8005
+    REVIEW_SERVICE_URL: http://review-service:8006
+    ADMIN_SERVICE_URL: http://admin-service:8007
+
+secrets:
+  create: false
+  chargeops-secrets:
+    MONGO_ROOT_USERNAME: CHANGE_ME
+    MONGO_ROOT_PASSWORD: CHANGE_ME
+    JWT_SECRET: CHANGE_ME
+    API_KEY: CHANGE_ME
+    STRIPE_SECRET_KEY: CHANGE_ME
+  mongo-secret:
+    MONGO_URI: CHANGE_ME
+  ai-service-secret:
+    MONGODB_SECRET_ID: CHANGE_ME
+
+serviceAccounts:
+  booking-service:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::497676936148:role/chargeops-eks-booking-service
+  payment-service:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::497676936148:role/chargeops-eks-payment-service
+  ai-service:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::497676936148:role/chargeops-eks-ai-service
+  invoice-worker:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::497676936148:role/chargeops-eks-invoice-worker
+  notification-worker:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::497676936148:role/chargeops-eks-notification-worker
+
+services:
+  frontend:
+    enabled: true
+    tier: web
+    replicas: 2
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/frontend
+      tag: frontend-v8
+    containerPort: 8080
+    service:
+      type: NodePort
+      ports:
+        - name: http
+          port: 80
+          targetPort: http
+          nodePort: 30090
+    probes:
+      livenessProbe:
+        httpGet: {path: /, port: http}
+        initialDelaySeconds: 20
+        periodSeconds: 20
+      readinessProbe:
+        httpGet: {path: /, port: http}
+        initialDelaySeconds: 10
+        periodSeconds: 10
+      startupProbe:
+        httpGet: {path: /, port: http}
+        failureThreshold: 18
+        periodSeconds: 5
+    resources: &standardResources
+      requests: {cpu: 100m, memory: 128Mi}
+      limits: {cpu: 300m, memory: 256Mi}
+
+  api-gateway:
+    enabled: true
+    tier: backend
+    replicas: 2
+    strategy:
+      type: RollingUpdate
+      rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/api-gateway
+      tag: api-gateway-v5
+    containerPort: 8000
+    service:
+      type: ClusterIP
+      ports: [{name: http, port: 8000, targetPort: http}]
+    env:
+      - {name: PORT, value: "8000"}
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: NODE_ENV}}
+      - name: ALLOWED_ORIGINS
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: ALLOWED_ORIGINS}}
+      - {name: AUTH_SERVICE_URL, value: http://auth-service:8001}
+      - {name: USER_SERVICE_URL, value: http://user-service:8002}
+      - {name: STATION_SERVICE_URL, value: http://station-service:8003}
+      - {name: BOOKING_SERVICE_URL, value: http://booking-service:8004}
+      - {name: PAYMENT_SERVICE_URL, value: http://payment-service:8005}
+      - {name: REVIEW_SERVICE_URL, value: http://review-service:8006}
+      - {name: ADMIN_SERVICE_URL, value: http://admin-service:8007}
+      - {name: AI_SERVICE_URL, value: http://ai-service:8008}
+    probes: &gatewayProbes
+      livenessProbe:
+        httpGet: {path: /health, port: http}
+        initialDelaySeconds: 20
+        periodSeconds: 20
+      readinessProbe:
+        httpGet: {path: /health, port: http}
+        initialDelaySeconds: 10
+        periodSeconds: 10
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+      limits: {cpu: 400m, memory: 256Mi}
+
+  auth-service:
+    enabled: true
+    tier: backend
+    replicas: 2
+    revisionHistoryLimit: 1
+    strategy: &recreateStrategy {type: Recreate}
+    waitForMongo: true
+    mongoDatabase: ev-auth-service
+    jwtSecret: true
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/auth-service
+      tag: auth-service-v7
+    containerPort: 8001
+    service: {type: ClusterIP, ports: [{name: http, port: 8001, targetPort: http}]}
+    envFromMongoSecret: true
+    env:
+      - {name: PORT, value: "8001"}
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: NODE_ENV}}
+      - name: ALLOWED_ORIGINS
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: ALLOWED_ORIGINS}}
+      - name: JWT_EXPIRES_IN
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: JWT_EXPIRES_IN}}
+      - name: ALLOW_ADMIN_REGISTRATION
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: ALLOW_ADMIN_REGISTRATION}}
+    probes: &backendProbes
+      livenessProbe:
+        httpGet: {path: /health, port: http}
+        initialDelaySeconds: 20
+        periodSeconds: 20
+      readinessProbe:
+        httpGet: {path: /health, port: http}
+        initialDelaySeconds: 10
+        periodSeconds: 10
+      startupProbe:
+        httpGet: {path: /health, port: http}
+        failureThreshold: 18
+        periodSeconds: 5
+    resources: *standardResources
+
+  user-service:
+    enabled: true
+    tier: backend
+    replicas: 2
+    revisionHistoryLimit: 1
+    strategy: *recreateStrategy
+    waitForMongo: true
+    mongoDatabase: ev-user-service
+    jwtSecret: true
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/user-service
+      tag: user-service-v6
+    containerPort: 8002
+    service: {type: ClusterIP, ports: [{name: http, port: 8002, targetPort: http}]}
+    envFromMongoSecret: true
+    env:
+      - {name: PORT, value: "8002"}
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: NODE_ENV}}
+      - name: ALLOWED_ORIGINS
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: ALLOWED_ORIGINS}}
+    probes: *backendProbes
+    resources: *standardResources
+
+  station-service:
+    enabled: true
+    tier: backend
+    replicas: 2
+    revisionHistoryLimit: 1
+    strategy: *recreateStrategy
+    waitForMongo: true
+    mongoDatabase: ev-station-service
+    jwtSecret: true
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/station-service
+      tag: station-service-v6
+    containerPort: 8003
+    service: {type: ClusterIP, ports: [{name: http, port: 8003, targetPort: http}]}
+    envFromMongoSecret: true
+    env:
+      - {name: PORT, value: "8003"}
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: NODE_ENV}}
+      - name: ALLOWED_ORIGINS
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: ALLOWED_ORIGINS}}
+      - name: AUTO_SEED_STATIONS
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: AUTO_SEED_STATIONS}}
+    probes: *backendProbes
+    resources: *standardResources
+
+  booking-service:
+    enabled: true
+    tier: backend
+    replicas: 2
+    revisionHistoryLimit: 1
+    strategy: *recreateStrategy
+    waitForMongo: true
+    mongoDatabase: ev-booking-service
+    jwtSecret: true
+    serviceAccountName: booking-service
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/booking-service
+      tag: booking-service-v8
+    containerPort: 8004
+    service: {type: ClusterIP, ports: [{name: http, port: 8004, targetPort: http}]}
+    envFromMongoSecret: true
+    env:
+      - {name: PORT, value: "8004"}
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: NODE_ENV}}
+      - name: ALLOWED_ORIGINS
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: ALLOWED_ORIGINS}}
+      - name: INTERNAL_SERVICE_API_KEY
+        valueFrom: {secretKeyRef: {name: chargeops-secrets, key: API_KEY}}
+      - name: AWS_REGION
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: AWS_REGION}}
+      - name: SQS_QUEUE_URL
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: SQS_QUEUE_URL}}
+      - name: SQS_NOTIFICATION_QUEUE_URL
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: SQS_NOTIFICATION_QUEUE_URL}}
+    probes: *backendProbes
+    resources: *standardResources
+
+  payment-service:
+    enabled: true
+    tier: backend
+    replicas: 2
+    revisionHistoryLimit: 1
+    strategy: *recreateStrategy
+    waitForMongo: true
+    mongoDatabase: ev-payment-service
+    jwtSecret: true
+    serviceAccountName: payment-service
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service
+      tag: payment-service-v10
+    containerPort: 8005
+    service: {type: ClusterIP, ports: [{name: http, port: 8005, targetPort: http}]}
+    envFromMongoSecret: true
+    env:
+      - {name: PORT, value: "8005"}
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: NODE_ENV}}
+      - name: ALLOWED_ORIGINS
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: ALLOWED_ORIGINS}}
+      - name: STRIPE_CURRENCY
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: STRIPE_CURRENCY}}
+      - name: STRIPE_MIN_CHARGE_AMOUNT
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: STRIPE_MIN_CHARGE_AMOUNT}}
+      - name: FRONTEND_APP_URL
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: FRONTEND_APP_URL}}
+      - name: INTERNAL_SERVICE_API_KEY
+        valueFrom: {secretKeyRef: {name: chargeops-secrets, key: API_KEY}}
+      - name: STRIPE_SECRET_KEY
+        valueFrom: {secretKeyRef: {name: chargeops-secrets, key: STRIPE_SECRET_KEY}}
+      - {name: BOOKING_SERVICE_URL, value: http://booking-service:8004}
+      - {name: USER_SERVICE_URL, value: http://user-service:8002}
+      - {name: STATION_SERVICE_URL, value: http://station-service:8003}
+      - name: AWS_REGION
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: AWS_REGION}}
+      - name: S3_BUCKET_NAME
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: PAYMENT_INVOICE_BUCKET_NAME}}
+      - name: SQS_QUEUE_URL
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: SQS_QUEUE_URL}}
+      - name: SQS_NOTIFICATION_QUEUE_URL
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: SQS_NOTIFICATION_QUEUE_URL}}
+    probes: *backendProbes
+    resources: *standardResources
+
+  review-service:
+    enabled: true
+    tier: backend
+    replicas: 2
+    revisionHistoryLimit: 1
+    strategy: *recreateStrategy
+    waitForMongo: true
+    mongoDatabase: ev-review-service
+    jwtSecret: true
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/review-service
+      tag: review-service-v6
+    containerPort: 8006
+    service: {type: ClusterIP, ports: [{name: http, port: 8006, targetPort: http}]}
+    envFromMongoSecret: true
+    env:
+      - {name: PORT, value: "8006"}
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: NODE_ENV}}
+      - name: ALLOWED_ORIGINS
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: ALLOWED_ORIGINS}}
+    probes: *backendProbes
+    resources: *standardResources
+
+  admin-service:
+    enabled: true
+    tier: backend
+    replicas: 2
+    revisionHistoryLimit: 1
+    strategy: *recreateStrategy
+    waitForMongo: true
+    mongoDatabase: ev-admin-service
+    jwtSecret: true
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/admin-service
+      tag: admin-service-v6
+    containerPort: 8007
+    service: {type: ClusterIP, ports: [{name: http, port: 8007, targetPort: http}]}
+    envFromMongoSecret: true
+    env:
+      - {name: PORT, value: "8007"}
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: NODE_ENV}}
+      - name: ALLOWED_ORIGINS
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: ALLOWED_ORIGINS}}
+      - {name: USER_SERVICE_URL, value: http://user-service:8002}
+      - {name: STATION_SERVICE_URL, value: http://station-service:8003}
+      - {name: BOOKING_SERVICE_URL, value: http://booking-service:8004}
+      - {name: PAYMENT_SERVICE_URL, value: http://payment-service:8005}
+    probes: *backendProbes
+    resources: *standardResources
+
+  ai-service:
+    enabled: true
+    tier: backend
+    replicas: 2
+    revisionHistoryLimit: 2
+    serviceAccountName: ai-service
+    mongoDatabase: ev-ai-service
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/ai-service
+      tag: ai-service-v5
+    containerPort: 3000
+    service:
+      type: ClusterIP
+      ports:
+        - {name: http, port: 3000, targetPort: http}
+        - {name: http-gateway, port: 8008, targetPort: http}
+    env:
+      - {name: PORT, value: "3000"}
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: NODE_ENV}}
+      - name: ALLOWED_ORIGINS
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: ALLOWED_ORIGINS}}
+      - name: AWS_REGION
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: AWS_REGION}}
+      - name: BEDROCK_MODEL_ID
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: BEDROCK_MODEL_ID}}
+      - name: BEDROCK_MAX_TOKENS
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: BEDROCK_MAX_TOKENS}}
+      - name: BEDROCK_TEMPERATURE
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: BEDROCK_TEMPERATURE}}
+      - name: CHAT_MEMORY_LIMIT
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: CHAT_MEMORY_LIMIT}}
+      - name: SERVICE_REQUEST_TIMEOUT_MS
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: SERVICE_REQUEST_TIMEOUT_MS}}
+      - name: USER_SERVICE_URL
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: USER_SERVICE_URL}}
+      - name: STATION_SERVICE_URL
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: STATION_SERVICE_URL}}
+      - name: BOOKING_SERVICE_URL
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: BOOKING_SERVICE_URL}}
+      - name: PAYMENT_SERVICE_URL
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: PAYMENT_SERVICE_URL}}
+      - name: REVIEW_SERVICE_URL
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: REVIEW_SERVICE_URL}}
+      - name: ADMIN_SERVICE_URL
+        valueFrom: {configMapKeyRef: {name: ai-service-config, key: ADMIN_SERVICE_URL}}
+    probes: *backendProbes
+    resources:
+      requests: {cpu: 200m, memory: 256Mi}
+      limits: {cpu: 1000m, memory: 768Mi}
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities: {drop: [ALL]}
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      cpuAverageUtilization: 65
+      memoryAverageUtilization: 75
+
+workers:
+  invoice-worker:
+    enabled: true
+    tier: worker
+    replicas: 1
+    revisionHistoryLimit: 1
+    waitForMongo: true
+    mongoDatabase: ev-payment-service
+    serviceAccountName: invoice-worker
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service
+      tag: payment-service-v10
+    command: [node, workers/invoiceWorker.js]
+    env:
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: NODE_ENV}}
+      - name: AWS_REGION
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: AWS_REGION}}
+      - name: S3_BUCKET_NAME
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: PAYMENT_INVOICE_BUCKET_NAME}}
+      - name: SQS_QUEUE_URL
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: SQS_QUEUE_URL}}
+      - {name: USER_SERVICE_URL, value: http://user-service:8002}
+      - {name: STATION_SERVICE_URL, value: http://station-service:8003}
+      - {name: BOOKING_SERVICE_URL, value: http://booking-service:8004}
+    resources: &workerResources
+      requests: {cpu: 50m, memory: 128Mi}
+      limits: {cpu: 300m, memory: 256Mi}
+  notification-worker:
+    enabled: true
+    tier: worker
+    replicas: 1
+    revisionHistoryLimit: 1
+    waitForMongo: true
+    mongoDatabase: ev-payment-service
+    serviceAccountName: notification-worker
+    image:
+      repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/payment-service
+      tag: payment-service-v10
+    command: [node, workers/notificationWorker.js]
+    env:
+      - name: NODE_ENV
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: NODE_ENV}}
+      - name: AWS_REGION
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: AWS_REGION}}
+      - name: SQS_NOTIFICATION_QUEUE_URL
+        valueFrom: {configMapKeyRef: {name: chargeops-config, key: SQS_NOTIFICATION_QUEUE_URL}}
+    resources: *workerResources
+
+mongodb:
+  enabled: true
+  replicas: 1
+  image:
+    repository: mongo
+    tag: "7"
+    pullPolicy: IfNotPresent
+  port: 27017
+  existingClaim: mongodb-pvc
+  persistence:
+    create: false
+    size: 10Gi
+    storageClassName: ""
+  nodeSelector:
+    kubernetes.io/hostname: ip-172-31-12-24
+  probes:
+    livenessProbe:
+      tcpSocket: {port: mongo}
+      initialDelaySeconds: 30
+      periodSeconds: 20
+    readinessProbe:
+      tcpSocket: {port: mongo}
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    startupProbe:
+      tcpSocket: {port: mongo}
+      failureThreshold: 24
+      periodSeconds: 5
+
+ingress:
+  enabled: true
+  resources:
+    - name: chargeops-prod-api
+      className: alb
+      annotations:
+        alb.ingress.kubernetes.io/group.name: chargeops-prod
+        alb.ingress.kubernetes.io/group.order: "10"
+        alb.ingress.kubernetes.io/scheme: internet-facing
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+        alb.ingress.kubernetes.io/backend-protocol: HTTP
+        alb.ingress.kubernetes.io/healthcheck-path: /health
+        alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+        alb.ingress.kubernetes.io/success-codes: "200-399"
+      paths:
+        - {path: /api, pathType: Prefix, serviceName: api-gateway, servicePort: 8000}
+    - name: chargeops-prod-frontend
+      className: alb
+      annotations:
+        alb.ingress.kubernetes.io/group.name: chargeops-prod
+        alb.ingress.kubernetes.io/group.order: "20"
+        alb.ingress.kubernetes.io/scheme: internet-facing
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+        alb.ingress.kubernetes.io/backend-protocol: HTTP
+        alb.ingress.kubernetes.io/healthcheck-path: /healthz
+        alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+        alb.ingress.kubernetes.io/success-codes: "200-399"
+      paths:
+        - {path: /, pathType: Prefix, serviceName: frontend, servicePort: 80}

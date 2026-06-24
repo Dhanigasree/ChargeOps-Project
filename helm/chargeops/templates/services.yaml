@@ -1,0 +1,20 @@
+{{- range $name, $service := .Values.services }}
+{{- if and $service.enabled $service.service }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "chargeops.namespace" $ }}
+  labels:
+    app: {{ $name }}
+    {{- include "chargeops.commonLabels" $ | nindent 4 }}
+spec:
+  type: {{ $service.service.type }}
+  selector:
+    app: {{ $name }}
+  ports:
+    {{- toYaml $service.service.ports | nindent 4 }}
+---
+{{- end }}
+{{- end }}
+

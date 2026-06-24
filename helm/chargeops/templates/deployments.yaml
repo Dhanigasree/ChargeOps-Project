@@ -1,0 +1,72 @@
+{{- range $name, $service := .Values.services }}
+{{- if $service.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "chargeops.namespace" $ }}
+  labels:
+    app: {{ $name }}
+    tier: {{ $service.tier }}
+    {{- include "chargeops.commonLabels" $ | nindent 4 }}
+spec:
+  replicas: {{ $service.replicas }}
+  {{- with $service.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}
+  {{- with $service.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+        tier: {{ $service.tier }}
+    spec:
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      {{- with $service.serviceAccountName }}
+      serviceAccountName: {{ . }}
+      {{- end }}
+      {{- if $service.waitForMongo }}
+      initContainers:
+        - name: wait-for-mongodb
+          image: {{ $.Values.mongodbWait.image }}
+          command:
+            {{- toYaml $.Values.mongodbWait.command | nindent 12 }}
+      {{- end }}
+      containers:
+        - name: {{ $name }}
+          image: {{ printf "%s:%s" $service.image.repository $service.image.tag | quote }}
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $service.containerPort }}
+          {{- if $service.envFromMongoSecret }}
+          envFrom:
+            - secretRef:
+                name: mongo-secret
+          {{- end }}
+          {{- if or $service.env $service.mongoDatabase }}
+          env:
+            {{- with $service.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with $service.mongoDatabase }}
+            {{- include "chargeops.mongoEnv" (dict "mongoDatabase" . "jwtSecret" $service.jwtSecret) | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- with $service.probes }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          resources:
+            {{- toYaml $service.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml (default $.Values.containerSecurityContext $service.containerSecurityContext) | nindent 12 }}
+---
+{{- end }}
+{{- end }}

@@ -1,0 +1,86 @@
+{{- if .Values.mongodb.enabled }}
+{{- if .Values.mongodb.persistence.create }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.mongodb.existingClaim }}
+  namespace: {{ include "chargeops.namespace" . }}
+  labels:
+    app: mongodb
+    {{- include "chargeops.commonLabels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ .Values.mongodb.persistence.size }}
+  {{- with .Values.mongodb.persistence.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+  namespace: {{ include "chargeops.namespace" . }}
+  labels:
+    app: mongodb
+    tier: datastore
+    {{- include "chargeops.commonLabels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.mongodb.replicas }}
+  serviceName: mongodb
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+        tier: datastore
+    spec:
+      {{- with .Values.mongodb.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: mongodb
+          image: {{ printf "%s:%s" .Values.mongodb.image.repository .Values.mongodb.image.tag | quote }}
+          imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          ports:
+            - name: mongo
+              containerPort: {{ .Values.mongodb.port }}
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef: {name: chargeops-secrets, key: MONGO_ROOT_USERNAME}
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: chargeops-secrets, key: MONGO_ROOT_PASSWORD}
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
+          {{- toYaml .Values.mongodb.probes | nindent 10 }}
+      volumes:
+        - name: mongodb-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.mongodb.existingClaim }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: {{ include "chargeops.namespace" . }}
+  labels:
+    app: mongodb
+    {{- include "chargeops.commonLabels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: mongodb
+  ports:
+    - name: mongo
+      port: {{ .Values.mongodb.port }}
+      targetPort: mongo
+{{- end }}
+

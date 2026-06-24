@@ -1,0 +1,50 @@
+{{- range $name, $worker := .Values.workers }}
+{{- if $worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "chargeops.namespace" $ }}
+  labels:
+    app: {{ $name }}
+    tier: {{ $worker.tier }}
+    {{- include "chargeops.commonLabels" $ | nindent 4 }}
+spec:
+  replicas: {{ $worker.replicas }}
+  revisionHistoryLimit: {{ $worker.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+        tier: {{ $worker.tier }}
+    spec:
+      serviceAccountName: {{ $worker.serviceAccountName }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      {{- if $worker.waitForMongo }}
+      initContainers:
+        - name: wait-for-mongodb
+          image: {{ $.Values.mongodbWait.image }}
+          command:
+            {{- toYaml $.Values.mongodbWait.command | nindent 12 }}
+      {{- end }}
+      containers:
+        - name: {{ $name }}
+          image: {{ printf "%s:%s" $worker.image.repository $worker.image.tag | quote }}
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
+          command:
+            {{- toYaml $worker.command | nindent 12 }}
+          env:
+            {{- toYaml $worker.env | nindent 12 }}
+            {{- include "chargeops.mongoEnv" (dict "mongoDatabase" $worker.mongoDatabase) | nindent 12 }}
+          resources:
+            {{- toYaml $worker.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+---
+{{- end }}
+{{- end }}
+
