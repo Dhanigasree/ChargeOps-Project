@@ -23,9 +23,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
   id-token: write
-  pull-requests: read
+  contents: read
 
 concurrency:
   group: terraform-eks-ci
