@@ -1,0 +1,95 @@
+name: Terraform EKS CI
+
+# Plan-only Terraform workflow for terraform-eks/.
+# This workflow validates and plans infrastructure changes only.
+# It never runs terraform apply or terraform destroy, so it does not mutate
+# the running ChargeOps EKS application by itself.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - test
+    paths:
+      - "terraform-eks/**"
+      - ".github/workflows/terraform-eks-ci.yml"
+  push:
+    branches:
+      - main
+      - test
+    paths:
+      - "terraform-eks/**"
+      - ".github/workflows/terraform-eks-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+concurrency:
+  group: terraform-eks-ci
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+
+jobs:
+  terraform-plan:
+    name: Terraform fmt, validate, and plan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform-eks
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        run: |
+          terraform plan -no-color -out=tfplan | tee terraform-plan.txt
+
+      - name: Add plan to job summary
+        if: always()
+        run: |
+          {
+            echo "## Terraform EKS Plan"
+            echo
+            echo "This workflow is plan-only. It does not run terraform apply or terraform destroy."
+            echo
+            echo '```text'
+            cat terraform-plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Terraform plan artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-eks-plan
+          path: |
+            terraform-eks/terraform-plan.txt
+            terraform-eks/tfplan
+          if-no-files-found: warn
