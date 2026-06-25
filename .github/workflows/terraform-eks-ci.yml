@@ -40,6 +40,8 @@ jobs:
   terraform-plan:
     name: Terraform fmt, validate, and plan
     runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_TO_ASSUME }}
     defaults:
       run:
         working-directory: terraform-eks
@@ -48,10 +50,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify AWS OIDC role is configured
+        run: |
+          if [ -z "$AWS_ROLE_TO_ASSUME" ]; then
+            echo "AWS_ROLE_TO_ASSUME must be configured as a GitHub secret or variable." >&2
+            exit 1
+          fi
+          echo "AWS OIDC role is configured."
+
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
@@ -69,10 +79,11 @@ jobs:
       - name: Terraform plan
         id: plan
         run: |
-          terraform plan -no-color -out=tfplan | tee terraform-plan.txt
+          terraform plan -no-color -out=tfplan
+          terraform show -no-color tfplan > terraform-plan.txt
 
       - name: Add plan to job summary
-        if: always()
+        if: always() && hashFiles('terraform-eks/terraform-plan.txt') != ''
         run: |
           {
             echo "## Terraform EKS Plan"
@@ -85,7 +96,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Terraform plan artifact
-        if: always()
+        if: always() && hashFiles('terraform-eks/terraform-plan.txt') != ''
         uses: actions/upload-artifact@v4
         with:
           name: terraform-eks-plan
