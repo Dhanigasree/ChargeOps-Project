@@ -54,8 +54,8 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ap-south-1
 
-      - name: Confirm AWS OIDC role secret is configured
-        run: echo "AWS_ROLE_TO_ASSUME secret is configured"
+      - name: Verify AWS caller identity
+        run: aws sts get-caller-identity
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
