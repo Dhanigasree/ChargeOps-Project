@@ -83,6 +83,82 @@ data "aws_iam_policy_document" "github_actions_ci" {
   }
 
   statement {
+    sid    = "AllowTerraformStateBucketList"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket"
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket_name}"
+    ]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values = [
+        "eks/*"
+      ]
+    }
+  }
+
+  statement {
+    sid    = "AllowTerraformStateObjectAccess"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject"
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket_name}/eks/terraform.tfstate",
+      "arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket_name}/eks/terraform.tfstate.tflock"
+    ]
+  }
+
+  statement {
+    sid    = "AllowTerraformStateLockTable"
+    effect = "Allow"
+
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:UpdateItem"
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.state_lock_table_name}"
+    ]
+  }
+
+  statement {
+    sid    = "AllowTerraformStateKms"
+    effect = "Allow"
+
+    actions = [
+      "kms:Decrypt",
+      "kms:Encrypt",
+      "kms:GenerateDataKey",
+      "kms:DescribeKey"
+    ]
+
+    resources = [
+      aws_kms_key.s3.arn
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["s3.${var.aws_region}.amazonaws.com"]
+    }
+  }
+
+  statement {
     sid    = "AllowEksClusterDescribe"
     effect = "Allow"
 
