@@ -172,6 +172,59 @@ data "aws_iam_policy_document" "github_actions_ci" {
   }
 
   statement {
+    sid    = "AllowTerraformPlanRefreshReadOnly"
+    effect = "Allow"
+
+    actions = [
+      "cloudwatch:GetDashboard",
+      "cloudwatch:ListDashboards",
+      "dynamodb:DescribeContinuousBackups",
+      "dynamodb:DescribeTable",
+      "dynamodb:DescribeTimeToLive",
+      "ec2:Describe*",
+      "ecr:DescribeRepositories",
+      "ecr:GetLifecyclePolicy",
+      "ecr:ListTagsForResource",
+      "eks:DescribeAddon",
+      "eks:DescribeCluster",
+      "eks:DescribeNodegroup",
+      "eks:ListAddons",
+      "eks:ListTagsForResource",
+      "iam:GetOpenIDConnectProvider",
+      "iam:GetPolicy",
+      "iam:GetPolicyVersion",
+      "iam:GetRole",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+      "iam:ListPolicyVersions",
+      "iam:ListRolePolicies",
+      "iam:ListRoleTags",
+      "iam:ListPolicyTags",
+      "kms:DescribeKey",
+      "kms:GetKeyPolicy",
+      "kms:GetKeyRotationStatus",
+      "kms:ListResourceTags",
+      "logs:DescribeLogGroups",
+      "logs:ListTagsForResource",
+      "s3:GetBucketEncryption",
+      "s3:GetBucketLifecycleConfiguration",
+      "s3:GetBucketLocation",
+      "s3:GetBucketOwnershipControls",
+      "s3:GetBucketPublicAccessBlock",
+      "s3:GetBucketTagging",
+      "s3:GetBucketVersioning",
+      "s3:ListBucket",
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl",
+      "sqs:ListQueueTags"
+    ]
+
+    resources = [
+      "*"
+    ]
+  }
+
+  statement {
     sid    = "AllowEcrLogin"
     effect = "Allow"
 
