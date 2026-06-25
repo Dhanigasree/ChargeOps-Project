@@ -3,6 +3,7 @@ resource "aws_ecr_repository" "services" {
 
   name                 = "chargeops/${each.key}"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   encryption_configuration {
     encryption_type = "KMS"

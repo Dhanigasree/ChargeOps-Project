@@ -10,7 +10,8 @@ locals {
 resource "aws_s3_bucket" "chargeops" {
   for_each = local.s3_buckets
 
-  bucket = each.value
+  bucket        = each.value
+  force_destroy = true
 
   tags = {
     Name = each.value
