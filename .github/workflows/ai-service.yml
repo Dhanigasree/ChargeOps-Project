@@ -1,4 +1,4 @@
-name: AI Service
+name: AI Service 
 
 on:
   workflow_dispatch:

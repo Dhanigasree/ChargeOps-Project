@@ -1,5 +1,5 @@
 # ChargeOps Helm chart (analysis/demo only)
-
+ 
 This chart mirrors the current production workload definitions without replacing the manifests in `argocd/prod` or `k8s/prod`. It is not connected to an Argo CD Application and has not been installed into a cluster.
 
 The consolidated workload definitions in `argocd/prod` are the source for images, tags, replicas, ports, environment references, probes, resources, service accounts, workers, and MongoDB. The ingress definitions come from `k8s/prod/ingress.yaml`.

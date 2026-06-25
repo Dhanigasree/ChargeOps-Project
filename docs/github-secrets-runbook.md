@@ -1,7 +1,7 @@
 # GitHub Actions and SonarQube Secrets Runbook
 
 Use this checklist to finish the CI/CD and DevSecOps setup for ChargeOps.
-
+ 
 ## 1. Docker Hub Secrets
 
 In GitHub:
