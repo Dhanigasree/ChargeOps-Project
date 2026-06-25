@@ -41,7 +41,7 @@ jobs:
     name: Terraform fmt, validate, and plan
     runs-on: ubuntu-latest
     env:
-      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME || vars.AWS_ROLE_TO_ASSUME }}
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
     defaults:
       run:
         working-directory: terraform-eks
@@ -53,7 +53,7 @@ jobs:
       - name: Verify AWS OIDC role is configured
         run: |
           if [ -z "$AWS_ROLE_TO_ASSUME" ]; then
-            echo "AWS_ROLE_TO_ASSUME must be configured as a GitHub secret or variable." >&2
+            echo "AWS_ROLE_TO_ASSUME must be configured as a GitHub Actions repository secret." >&2
             exit 1
           fi
           echo "AWS OIDC role is configured."
