@@ -1,7 +1,7 @@
 # File: .github/workflows/cd-backend-template.yaml
 name: Reusable CD Template - Backend (Node.js)
 
-on:
+on: 
   workflow_call:
     inputs:
       service:

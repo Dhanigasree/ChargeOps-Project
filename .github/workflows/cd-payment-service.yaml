@@ -1,7 +1,7 @@
 name: CD - payment-service
 
 on:
-  push:
+  push: 
     branches: [dev, main]
     paths:
       - "ev-backend/services/payment-service/**"

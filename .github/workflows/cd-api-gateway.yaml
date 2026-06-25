@@ -1,7 +1,7 @@
 name: CD - api-gateway
 
 on:
-  push:
+  push: 
     branches: [dev, main]
     paths:
       - "ev-backend/services/api-gateway/**"

@@ -1,6 +1,6 @@
 name: CD - admin-service
 
-on:
+on: 
   push:
     branches: [dev, main]
     paths:
