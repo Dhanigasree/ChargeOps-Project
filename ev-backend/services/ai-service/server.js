@@ -11,6 +11,8 @@ import aiRoutes from "./src/routes/aiRoutes.js";
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 const corsOptions = {
   origin(origin, callback) {
     if (!origin || env.allowedOrigins.includes("*") || env.allowedOrigins.includes(origin)) {

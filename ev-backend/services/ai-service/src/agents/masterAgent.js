@@ -1,5 +1,6 @@
 import { getUserPreferences, updatePreferencesFromTurn } from "../services/preferenceService.js";
 import { runAgent } from "../services/bedrockAgentService.js";
+import { generateMonthlyReport } from "../services/reportService.js";
 import { classifyIntent } from "./agentUtils.js";
 import { analyticsAgent } from "./analyticsAgent.js";
 import { bookingAgent } from "./bookingAgent.js";
@@ -57,15 +58,29 @@ export const runMasterAgent = async ({ message, memory, context }) => {
   const preferences = (await getUserPreferences(context.userId)) || {};
   const intent = classifyIntent(message);
 
-  if (intent === "assistant" || intent === "report") {
-    const stationResult = await stationAgent.run({ message, memory, context, preferences });
-    await updatePreferencesFromTurn({ userId: context.userId, message, intent, structuredData: stationResult.data });
+  if (intent === "assistant") {
+    const answer = await runAgent({ message, memory, context });
+    await updatePreferencesFromTurn({ userId: context.userId, message, intent, structuredData: {} });
+
     return {
-      answer: `${stationResult.answer}\n\n${stationResult.explainability}`,
-      agents: ["Master Agent", stationResult.agent],
+      answer,
+      agents: ["Master Agent", "Bedrock Agent"],
       intent,
-      insights: stationResult.data,
-      explainability: stationResult.explainability
+      insights: {},
+      explainability: "Generic assistant requests are answered by the Bedrock-backed ChargeOps assistant with deterministic fallback support."
+    };
+  }
+
+  if (intent === "report") {
+    const report = await generateMonthlyReport({ context });
+    await updatePreferencesFromTurn({ userId: context.userId, message, intent, structuredData: report });
+
+    return {
+      answer: report.report || "The monthly AI report is unavailable right now.",
+      agents: ["Master Agent", "Report Agent"],
+      intent,
+      insights: report,
+      explainability: "Monthly reports combine ChargeOps payment, booking, station, and utilization signals where available."
     };
   }
 
