@@ -386,7 +386,7 @@ services:
     mongoDatabase: ev-ai-service
     image:
       repository: 497676936148.dkr.ecr.ap-south-1.amazonaws.com/chargeops/ai-service
-      tag: ai-service-v5
+      tag: ai-service-v4
     containerPort: 3000
     service:
       type: ClusterIP
